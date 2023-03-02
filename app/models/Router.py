@@ -1,5 +1,6 @@
 import socket
 import time
+import threading
 
 class Router:
   router_address = None
@@ -81,19 +82,53 @@ class Router:
     self.build_arp_table(assigned_ip_address, response_mac_address, node_socket)
 
     print(f"ARP tables updated. [Completed]")
-    node_socket.send(bytes(f"Node connected to router with mac {self.router_mac} and ip address of {self.router_ip_address}.", "utf-8"))
+    node_socket.send(bytes(f"Node connected to router with mac {self.router_mac} and IP address of {self.router_ip_address}.", "utf-8"))
+  
+  def broadcast_packet(
+    self,
+    # src_ip,
+    packet
+  ):
+    # for node_ip in self.arp_table_socket.keys:
+    #   if node_ip != src_ip:
+    #     node_socket = self.arp_table_socket[node_ip]
+    #     node_socket.send(bytes(packet, "utf-8"))
+    for node_ip in self.arp_table_socket.keys():
+      node_socket = self.arp_table_socket[node_ip]
+      node_socket.send(bytes(packet, "utf-8"))
+
+  def listen(self, node_socket: socket.socket):
+    '''
+      Listens to node and broadcasts packet to receipient.
+    '''
+    while True:
+      packet = node_socket.recv(1024).decode("utf-8")
+      print("Packet received: ", packet)
+      self.broadcast_packet(packet)
+
+  def handle_node(self, node_socket: socket.socket):
+    '''
+      Started on a seperate thread. 
+      1. Establishes identitifying connection with node.
+      2. Listens to node indefinitely.
+    '''
+    while True:
+      message = node_socket.recv(1024)
+      if message.decode("utf-8") == "connection_request":
+        self.connection_request(node_socket)
+        break
+    
+    self.listen(node_socket)
+
 
   def run(self):
     print(f"Router starting with mac {self.router_mac} and ip address of {self.router_ip_address}...")
     self.router_socket.listen(self.max_connections)
 
-    while True:
-      node_socket, node_address = self.router_socket.accept()
-      if (node_socket != None):
-        message = node_socket.recv(1024)
+    try:
+      while True:
+        node_socket, node_address = self.router_socket.accept()
+        threading.Thread(target=self.handle_node, args=(node_socket, )).start() # Start a seperate thread for every client
 
-        if message.decode("utf-8") == "connection_request":
-          self.connection_request(node_socket)
-
-        # else:
-        #   print(f"Message: {message}")
+    except KeyboardInterrupt:
+      self.router_socket.close()

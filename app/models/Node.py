@@ -1,9 +1,10 @@
 import socket
 import time
-from util import make_packet
+import threading
+from models.util import make_packet
 
 class Node:
-  node_ip_address = None # Assigned by router
+  node_ip_address = None # Assigned by router - See Router.assign_ip_address()
   node_mac = None
 
   router_address = None
@@ -56,18 +57,29 @@ class Node:
         mac_provided = self.response_mac_address()
     return
 
+  def listen(self):
+    while True:
+      packet = self.router_socket.recv(1024).decode("utf-8")
+      print(packet)
 
-  def run(self) -> None:
+  def handle_input(self):
+    while True:
+      node_input = input()
+      if node_input == "quit":
+        exit(1)
+      elif node_input:
+        print("Payload:", node_input)
+        dest_ip = input("Enter destination IP address: ")
+        packet = make_packet(dest_ip, self.node_ip_address, node_input)
+        self.router_socket.send(bytes(packet, "utf-8"))
+
+  def run(self) -> None: 
     print(f"Node connecting to router with mac {self.node_mac}...")
     self.router_socket.connect(self.router_address)
     self.connection_request()
-    
-    while True:
-      message = self.router_socket.recv(1024).decode('utf-8')
-      # print(f"Message: {message}")
+    try:
+      threading.Thread(target=self.listen).start()
+      self.handle_input()
 
-      # if (self.node_ip_address):
-      #   dest_ip = input("Destination IP: ")
-      #   payload = input("Payload: ")
-      #   make_packet(dest_ip, self.node_ip_address, payload)
-
+    except KeyboardInterrupt:
+      self.router_socket.close()
