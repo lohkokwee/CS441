@@ -1,3 +1,4 @@
+LOCALHOST = "localhost"
 ROUTER1_PORT = 8001
 ROUTER2_PORT = 8002
 
@@ -22,7 +23,8 @@ ROUTER2_CONFIG = {
   "router_ip_address": "0x21",
   "router_mac": "R2",
   "router_port": ROUTER2_PORT,
-  "max_connections": 5
+  "max_connections": 5,
+  "router_relay_addresses": [(LOCALHOST, ROUTER1_PORT)]
 }
 
 NODE2_CONFIG = {
