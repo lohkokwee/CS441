@@ -1,6 +1,7 @@
 import socket
 import time
 import threading
+import os
 from models.util import make_packet, print_brk, break_packet
 
 class Node:
@@ -61,19 +62,30 @@ class Node:
 
   def listen(self):
     while True:
-      packet = self.router_int_socket.recv(1024).decode("utf-8")
-      if len(packet.split("-")) == 1:
-        print("Message received:", packet)
-      else:
-        data = break_packet(packet)
-        print("Payload received:", data.get("payload", None))
-      print_brk()
+      try:
+        data = self.router_int_socket.recv(1024)
+        if not data:
+          # When connection ends from router
+          print("Connection from router interface terminated. Terminating node...")
+          self.router_int_socket.close()
+          os._exit(0)
+        packet = data.decode("utf-8")
+        if len(packet.split("-")) == 1:
+          print("Message received:", packet)
+        else:
+          data = break_packet(packet)
+          print("Payload received:", data.get("payload", None))
+        print_brk()
+      except:
+        return # Should only occur when handle_input receives "quit"
 
   def handle_input(self):
     while True:
       node_input = input()
       if node_input == "quit":
-        exit(1)
+        print("Terminating node and connection with router interface...")
+        self.router_int_socket.close()
+        os._exit(0)
       elif node_input:
         print("Payload:", node_input)
         dest_ip = input("Enter destination IP address: ")
