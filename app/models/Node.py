@@ -27,7 +27,7 @@ class Node:
     self.router_int_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
   def assign_ip_address(self):
-    print("Awaiting IP address...")
+    print("Awaiting IP address... [1/2]")
     while True:
       message = self.router_int_socket.recv(1024).decode('utf-8')
       if message == "assign_ip_address_completed":
@@ -37,7 +37,7 @@ class Node:
     return self.node_ip_address
 
   def response_mac_address(self):
-    print("Sending MAC...")
+    print("Sending MAC... [2/2]")
     self.router_int_socket.send(bytes(f"{self.node_mac}" ,"utf-8"))
     time.sleep(1)
     self.router_int_socket.send(bytes(f"request_mac_address_completed" ,"utf-8"))
@@ -56,7 +56,7 @@ class Node:
 
       elif (message == "request_mac_address"):
         mac_provided = self.response_mac_address()
-    print("Node connection request completed.")
+    print("Node connection request completed. [Completed]")
     print_brk()
     return
 
@@ -66,7 +66,7 @@ class Node:
         data = self.router_int_socket.recv(1024)
         if not data:
           # When connection ends from router
-          print("Connection from router interface terminated. Terminating node...")
+          print("Connection from router interface terminated. Node terminated.")
           self.router_int_socket.close()
           os._exit(0)
         packet = data.decode("utf-8")
@@ -77,6 +77,7 @@ class Node:
           print("Payload received:", data.get("payload", None))
         print_brk()
       except:
+        print("Node terminated.")
         return # Should only occur when handle_input receives "quit"
 
   def handle_input(self):

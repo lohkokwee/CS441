@@ -64,7 +64,7 @@ class RouterInterface:
     
     return response_mac_address
 
-  def build_arp_table(self, ip_address:str, mac_address: str, corresponding_socket: socket.socket, is_router_interface: bool = False) -> None:
+  def build_arp_table(self, ip_address: str, mac_address: str, corresponding_socket: socket.socket, is_router_interface: bool = False) -> None:
     if is_router_interface:
       self.router_int_arp_table_mac[ip_address] = mac_address
       self.router_int_arp_table_socket[ip_address] = corresponding_socket
@@ -73,11 +73,21 @@ class RouterInterface:
       self.arp_table_socket[ip_address] = corresponding_socket
     return 
 
-  def node_connection_response(self, corresponding_socket: socket.socket):
+  def destroy_arp_connections(self, ip_address: str) -> None:
+    is_destroyed = self.arp_table_mac.pop(ip_address, False)
+    self.arp_table_socket.pop(ip_address, False)
+
+    if not is_destroyed:
+      self.router_int_arp_table_mac.pop(ip_address)
+      self.router_int_arp_table_socket.pop(ip_address)
+    return
+
+  def node_connection_response(self, corresponding_socket: socket.socket) -> tuple[str, str]:
     '''
       Establishes arp tables for socket and mac.
       1. Assign free IP address.
       2. Request MAC address.
+      Returns assigned IP address and MAC of device.
     '''
     print(f"Node connection request received.")
     print(f"Updating ARP tables...")
@@ -93,7 +103,8 @@ class RouterInterface:
 
     print(f"ARP tables updated. [Completed]")
     print_brk()
-    corresponding_socket.send(bytes(f"Node connected to router interface with mac {self.router_int_mac} and IP address of {self.router_int_ip_address}.", "utf-8"))
+    corresponding_socket.send(bytes(f"Node connected to router interface with MAC of {self.router_int_mac} and IP address of {self.router_int_ip_address}.", "utf-8"))
+    return assigned_ip_address, response_mac_address
   
   def route_packet(
     self,
@@ -129,16 +140,29 @@ class RouterInterface:
       routed_socket.send(bytes(make_packet(**new_packet_data), "utf-8"))
     return
 
-  def listen(self, corresponding_socket: socket.socket):
+  def listen(self, corresponding_socket: socket.socket, ip_address: str, mac_address: str):
     '''
       Listens to node and broadcasts packet to receipient.
     '''
     while True:
-      packet = corresponding_socket.recv(1024).decode("utf-8")
-      print("Packet received: ", packet)
-      print_brk()
+      data = corresponding_socket.recv(1024)
+      if not data:
+        print(f"Connection terminated from IP address of {ip_address} and MAC of {mac_address}.")
+        print(f"Closing corresponding connections... [1/2]")
+        corresponding_socket.close()
+        print(f"Unassigning IP address from ARP tables... [2/2]")
+        self.destroy_arp_connections(ip_address)
+        print(f"Connection to {mac_address} terminated. [Completed]")
+        print_brk()
+        return # End thread
+
+      packet = data.decode("utf-8")
       if len(packet.split('-')) != 1:
+        print("Packet received: ", packet)
         self.route_packet(packet)
+      else:
+        print(packet)
+      print_brk()
   
   def provide_router_int_connection_data(self, corresponding_socket: socket.socket):
     data = f"{self.router_int_ip_address}-{self.router_int_mac}"
@@ -157,22 +181,34 @@ class RouterInterface:
       if message == f"provide_router_int_connection_data_completed":
         break
       data = message.split("-")
-    print(f"Connection router's IP address and MAC of {data} received.")
+    print(f"Connection router's IP address of {data[0]} and MAC of {data[1]} received.")
     return data
   
-  def router_int_connection_request(self, corresponding_socket: socket.socket):
+  def router_int_connection_request(self, corresponding_socket: socket.socket) -> tuple[str, str]:
     '''
-      Establishes arp tables for socket and mac for router interface that is conntecting to another router.
+      Establishes arp tables for socket and mac for router interface that is connecting to another router.
       1. Request for target router's IP address.
       2. Request for target router's IP address MAC address.
     '''
     corresponding_socket.send(bytes("router_int_connection_request", "utf-8"))
-    corresponding_ip_address = False
-    corresponding_mac_address = False
+    corresponding_ip_address = None
+    corresponding_mac_address = None
     data_provided = False
 
-    while not corresponding_ip_address or not corresponding_mac_address or not data_provided:
-      message = corresponding_socket.recv(1024).decode('utf-8')
+    while (corresponding_ip_address is None) or (corresponding_mac_address is None) or not data_provided:
+      data = corresponding_socket.recv(1024)
+      if not data:
+        print("Connection from router interface terminated prematurely.") # Router interface connection ends before ARP established
+        print(f"Closing corresponding connections... [1/2]")
+        corresponding_socket.close()
+        print(f"Unassigning IP address from ARP tables... [2/2]")
+        if corresponding_ip_address:
+          self.destroy_arp_connections(corresponding_ip_address)
+        print(f"Connection terminated. [Completed]")
+        print_brk()
+        return corresponding_ip_address, corresponding_mac_address # End thread
+
+      message = data.decode('utf-8')
       if (message == "provide_router_int_connection_data"):
         corresponding_ip_address, corresponding_mac_address = self.receive_router_int_connection_data(corresponding_socket)
 
@@ -181,7 +217,7 @@ class RouterInterface:
       
     self.build_arp_table(corresponding_ip_address, corresponding_mac_address, corresponding_socket, is_router_interface = True)
     print_brk()
-    return
+    return corresponding_ip_address, corresponding_mac_address
   
   def request_router_int_connecting_data(self, corresponding_socket: socket.socket) -> list[str]:
     corresponding_socket.send(bytes(f"request_router_int_connecting_data" ,"utf-8"))
@@ -190,7 +226,7 @@ class RouterInterface:
       if message == f"provide_router_int_connecting_data_completed":
         break
       data = message.split("-")
-    print(f"Connecting router's IP address and MAC of {data} received.")
+    print(f"Connecting router's IP address of {data[0]} and MAC of {data[1]} received.")
     return data
   
   def provide_router_int_connecting_data(self, corresponding_socket: socket.socket):
@@ -203,7 +239,7 @@ class RouterInterface:
     print(f"Connecting data provided.")
     return True
 
-  def router_int_connection_response(self, corresponding_socket: socket.socket):
+  def router_int_connection_response(self, corresponding_socket: socket.socket) -> tuple[str, str]:
     '''
       Establishes arp tables for socket and mac for router interface that is trying to connect to this router.
       1. Provide own IP address.
@@ -224,29 +260,49 @@ class RouterInterface:
     print(f"ARP tables updated. [Completed]")
     print_brk()
 
-    corresponding_socket.send(bytes(f"Router interface connected to router interface with mac {self.router_int_mac} and IP address of {self.router_int_ip_address}.", "utf-8"))
-    pass
+    corresponding_socket.send(bytes(f"Router interface connected to router interface with MAC of {self.router_int_mac} and IP address of {self.router_int_ip_address}.", "utf-8"))
+    return connecting_ip_address, connecting_mac
 
   def handle_connection(self, corresponding_socket: socket.socket):
     '''
       Started on a seperate thread. 
-      1. Establishes identitifying connection with node.
+      1. Establishes identitifying connection with node/router interface.
       2. Listens to node indefinitely.
     '''
+    ip_address = None
+
     while True:
-      message = corresponding_socket.recv(1024)
-      if message.decode("utf-8") == "node_connection_request":
-        self.node_connection_response(corresponding_socket)
+      data = corresponding_socket.recv(1024)
+      if not data:
+        print("Connection from node terminated prematurely.") # Node connection ends before ARP established
+        print(f"Closing corresponding connections... [1/2]")
+        corresponding_socket.close()
+        print(f"Unassigning IP address from ARP tables... [2/2]")
+        if ip_address:
+          self.destroy_arp_connections(corresponding_ip_address)
+        print(f"Connection terminated. [Completed]")
+        print_brk()
+        return # End thread
+
+      message = data.decode("utf-8")
+      if message == "node_connection_request":
+        ip_address, mac_address = self.node_connection_response(corresponding_socket)
         break
-      elif message.decode("utf-8") == "router_int_connection_request":
-        self.router_int_connection_response(corresponding_socket)
+      elif message == "router_int_connection_request":
+        ip_address, mac_address = self.router_int_connection_response(corresponding_socket)
         break
     
-    self.listen(corresponding_socket)
+    self.listen(corresponding_socket, ip_address, mac_address)
 
   def handle_router_int_connection(self, corresponding_socket: socket.socket):
-    self.router_int_connection_request(corresponding_socket)
-    threading.Thread(target=self.listen, args=(corresponding_socket, )).start()
+    '''
+      Create connection with other router interfaces.
+      1. Initiates connection for a router interface address.
+      2. Start a thread listen to the new connection if identifying connection established.
+    '''
+    ip_address, mac_address = self.router_int_connection_request(corresponding_socket)
+    if ip_address and mac_address:
+      threading.Thread(target=self.listen, args=(corresponding_socket, ip_address, mac_address, )).start()
 
 
   def run(self):
@@ -254,7 +310,6 @@ class RouterInterface:
     print(f"Router interface starting with mac {self.router_int_mac} and ip address of {self.router_int_ip_address}...")
     print_brk()
     if (len(self.router_int_relay_addresses) != 0):
-      # Create connection with routers
       for address in self.router_int_relay_addresses:
         corresponding_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         corresponding_socket.connect(address)
