@@ -2,7 +2,7 @@ import os
 import socket
 import time
 import threading
-from models.util import break_packet, make_packet, print_brk
+from models.util import print_brk
 from models.arp.ARPTable import ARPTable
 
 class RouterInterface:

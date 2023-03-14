@@ -76,7 +76,7 @@ class Node:
 
   def listen(self):
     while True:
-      # try:
+      try:
         data = self.router_int_socket.recv(1024)
         if not data:
           # When connection ends from router
@@ -95,9 +95,9 @@ class Node:
           else:
             print("Unintended recipient.")
         print_brk()
-      # except:
-      #   print("Node terminated.")
-      #   return # Should only occur when handle_input receives "quit"
+      except: # Remove this exception to see potential crashes here
+        print("Node terminated.")
+        return # Should only occur when handle_input receives "quit"
 
   def handle_input(self):
     while True:
@@ -114,7 +114,7 @@ class Node:
         print_brk()
 
       elif node_input == "ip":
-        pass
+        print("IP protocol in progress.")
 
       elif node_input == "help":
         print_node_help()
