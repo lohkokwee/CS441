@@ -1,4 +1,4 @@
-from typing import Dict, TypedDict, Union
+from typing import Dict, TypedDict, Union, List
 import socket
 
 class ARPTable:
@@ -36,7 +36,7 @@ class ARPTable:
     arp_record = self.arp_table[ip_address]
     return arp_record["mac"]
   
-  def get_all_sockets(self) -> list[socket.socket]:
+  def get_all_sockets(self) -> List[socket.socket]:
     all_arp_records = self.arp_table.values()
     return list(map(lambda arp_record: arp_record["corresponding_socket"] , all_arp_records))
 
