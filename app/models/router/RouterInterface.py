@@ -125,6 +125,18 @@ class RouterInterface:
           print("Ethernet frame received: ", payload)
           self.broadcast_ethernet_frame_data(payload)
         print_brk()
+      except ConnectionResetError as cre:
+        # Raise exception here when node connection closes
+        # For windows OS
+        print(f"Connection terminated from IP address of {ip_address} and MAC of {mac_address}.")
+        print(f"Closing corresponding connections... [1/2]")
+        corresponding_socket.close()
+        print(f"Unassigning IP address from ARP tables... [2/2]")
+        self.destroy_arp_connections(ip_address)
+        print(f"Connection to {mac_address} terminated. [Completed]")
+        print_brk()
+        return # End thread
+
       except:
         corresponding_socket.close()
         os._exit(0)
@@ -300,4 +312,3 @@ class RouterInterface:
       corresponding_socket.close()
       print_brk()
       os._exit(0)
-      self.router_int_socket.close()
