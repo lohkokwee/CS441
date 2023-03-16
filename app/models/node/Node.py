@@ -116,6 +116,10 @@ class Node:
       elif node_input == "ip":
         print("IP protocol in progress.")
 
+      elif node_input == "whoami":
+        # todo: include IP address once implemented
+        print(f"Node MAC address is {self.node_mac}")
+
       elif node_input == "help":
         print_node_help()
       

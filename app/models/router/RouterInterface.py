@@ -4,6 +4,7 @@ import time
 import threading
 from models.util import print_brk
 from models.arp.ARPTable import ARPTable
+from models.util import print_brk, print_router_help, print_command_not_found
 
 class RouterInterface:
   router_int_address = None
@@ -288,6 +289,33 @@ class RouterInterface:
     if ip_address and mac_address:
       threading.Thread(target=self.listen, args=(corresponding_socket, ip_address, mac_address, )).start()
 
+  def handle_input(self):
+    while True:
+      router_input = input()
+      if router_input == "quit":
+        print("Terminating router and connection with other interfaces...")
+        self.router_int_socket.close()
+        os._exit(0)
+
+      elif router_input == "whoami":
+        print(f"Router's address is {self.router_int_address}")
+        print(f"Router's IP address is {self.router_int_ip_address}")
+        print(f"Router's MAC address is {self.router_int_mac}")
+        print(f"Router's relay addresses are {self.router_int_relay_addresses}")
+
+      elif router_input == "arp":
+        print("IP Address \t MAC Address")
+        print_brk()
+        for ip_add, details in self.arp_table.to_dict().items():
+          print(f"{ip_add} \t\t {details['mac']}")
+
+      # todo: implement ARP broadcast
+
+      elif router_input == "help":
+        print_router_help()
+      
+      else:
+        print_command_not_found(device = "router_interface")
 
   def run(self):
     print_brk()
@@ -300,12 +328,17 @@ class RouterInterface:
         corresponding_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         corresponding_socket.connect(address)
         self.handle_router_int_connection(corresponding_socket)
-    
+      
+    print_router_help()
+    # opens another thread to handle input
+    threading.Thread(target=self.handle_input).start()
+
     try:
       self.router_int_socket.listen(self.max_connections)
       while True:
         corresponding_socket, corresponding_address = self.router_int_socket.accept()
-        threading.Thread(target=self.handle_connection, args=(corresponding_socket, )).start() # Start a seperate thread for every client
+        # Start a seperate thread for every client
+        threading.Thread(target=self.handle_connection, args=(corresponding_socket, )).start()
 
     except:
       print(f"Router interface {self.router_int_ip_address} terminating.")
