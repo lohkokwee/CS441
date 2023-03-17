@@ -94,6 +94,11 @@ class Node:
             print(f"Data: {frame.data}")
           else:
             print("Unintended recipient.")
+
+        # Handle and reply to ARP broadcast query here
+        elif payload[:10] == "Who has IP":
+          print(payload)
+
         print_brk()
       except: # Remove this exception to see potential crashes here
         print("Node terminated.")
@@ -115,6 +120,12 @@ class Node:
 
       elif node_input == "ip":
         print("IP protocol in progress.")
+      
+      elif node_input == "reply":
+        arp_response_payload = EthernetFrame.arp_reply_sequence(self.router_int_mac, self.node_mac).dumps()
+        self.router_int_socket.send(bytes(arp_response_payload, "utf-8"))
+        print("ARP response sent.")
+        print_brk()
 
       elif node_input == "whoami":
         # todo: include IP address once implemented

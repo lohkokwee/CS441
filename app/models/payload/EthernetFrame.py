@@ -51,3 +51,11 @@ class EthernetFrame:
     dest_mac = input("Enter destination MAC address... [1/2]\n")
     data = input("Enter payload... [2/2]\n")
     return EthernetFrame(dest_mac, src_mac, data)
+
+  @staticmethod
+  def arp_reply_sequence(dst_mac: str, src_mac: str) -> EthernetFrame:
+    '''
+      Sends host's MAC address to router to resolve ARP table
+    '''
+    payload = "arp_response"
+    return EthernetFrame(dst_mac, src_mac, payload)

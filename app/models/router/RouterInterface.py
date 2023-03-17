@@ -18,6 +18,10 @@ class RouterInterface:
   arp_table = ARPTable()
   router_int_arp_table = ARPTable()
 
+  arp_last_broadcasted_ip = None
+  arp_table_ip_last_updated = None
+  arp_response = False
+
   def __init__(
     self,
     router_int_ip_address: str,
@@ -121,10 +125,24 @@ class RouterInterface:
           return # End thread
 
         payload = data.decode("utf-8")
-        is_valid_payload = len(payload.split("|")) > 1
-        if is_valid_payload and payload[:2] != "0x":
-          print("Ethernet frame received: ", payload)
-          self.broadcast_ethernet_frame_data(payload)
+        payload_sections = payload.split("|")
+        is_valid_payload = len(payload_sections) > 1
+
+        if is_valid_payload:
+          # Checks whether frame is query reply, if yes, update ARP table
+          if payload_sections[0] == self.router_int_mac and payload_sections[-1] == "arp_response":
+            self.arp_response = True
+            print(f"ARP response received, updating ARP table for {self.arp_last_broadcasted_ip}...")
+            print(payload)
+
+            # todo: update arp_table_ip_last_updated and set arp_last_broadcasted_ip to None
+            # don't return?
+            # return
+            
+          elif payload[:2] != "0x":
+            print("Ethernet frame received: ", payload)
+            self.broadcast_ethernet_frame_data(payload)
+
         print_brk()
       except ConnectionResetError as cre:
         # Raise exception here when node connection closes
@@ -256,26 +274,31 @@ class RouterInterface:
     '''
     ip_address = None
 
-    while True:
-      data = corresponding_socket.recv(1024)
-      if not data:
-        print("Connection from node terminated prematurely.") # Node connection ends before ARP established
-        print(f"Closing corresponding connections... [1/2]")
-        corresponding_socket.close()
-        print(f"Unassigning IP address from ARP tables... [2/2]")
-        if ip_address:
-          self.destroy_arp_connections(corresponding_ip_address)
-        print(f"Connection terminated. [Completed]")
-        print_brk()
-        return # End thread
+    try:
+      while True:
+        data = corresponding_socket.recv(1024)
+        if not data:
+          print("Connection from node terminated prematurely.") # Node connection ends before ARP established
+          print(f"Closing corresponding connections... [1/2]")
+          corresponding_socket.close()
+          print(f"Unassigning IP address from ARP tables... [2/2]")
+          if ip_address:
+            self.destroy_arp_connections(corresponding_ip_address)
+          print(f"Connection terminated. [Completed]")
+          print_brk()
+          return # End thread
 
-      message = data.decode("utf-8")
-      if message == "node_connection_request":
-        ip_address, mac_address = self.node_connection_response(corresponding_socket)
-        break
-      elif message == "router_int_connection_request":
-        ip_address, mac_address = self.router_int_connection_response(corresponding_socket)
-        break
+        message = data.decode("utf-8")
+        if message == "node_connection_request":
+          ip_address, mac_address = self.node_connection_response(corresponding_socket)
+          break
+        elif message == "router_int_connection_request":
+          ip_address, mac_address = self.router_int_connection_response(corresponding_socket)
+          break
+
+    except ConnectionResetError:
+      print("Connection reset error in handle_connection")
+      return
     
     self.listen(corresponding_socket, ip_address, mac_address)
 
@@ -310,12 +333,46 @@ class RouterInterface:
           print(f"{ip_add} \t\t {details['mac']}")
 
       # todo: implement ARP broadcast
+      elif router_input == "broadcast":
+        self.broadcast_arp_query()
 
       elif router_input == "help":
         print_router_help()
       
       else:
         print_command_not_found(device = "router_interface")
+  
+  def broadcast_arp_query(self):
+    '''
+      Broadcasts ARP query to look for MAC with the corresponding IP.
+      1. Sends out a broadcast to all hosts within LAN.
+      2. If reply matches, then update MAC table.
+    '''
+    # todo: implement this
+    self.arp_response = False
+    # 0. Get user input on which IP to get
+    target_ip = input("What is the IP address of the MAC you wish to get: ")
+    self.arp_last_broadcasted_ip = target_ip
+
+    print("Broadcasting ARP query to all in same LAN...")
+
+    connected_sockets = self.arp_table.get_all_sockets()
+    print("Number of connected sockets = " + str(len(connected_sockets)))
+    print("Number of threads = " + str(threading.enumerate()))
+    
+    # Broadcast
+    while not self.arp_response: 
+      try:
+        for connected_socket in connected_sockets:
+          connected_socket.send(bytes(f"Who has IP: {target_ip}, I am {self.router_int_mac}", "utf-8"))
+        time.sleep(2)
+
+      except OSError:
+        print("OS Error in broadcast_arp_query")
+        return
+      except UnboundLocalError:
+        print("UnboundLocalError in broadcast_arp_query")
+        return
 
   def run(self):
     print_brk()
