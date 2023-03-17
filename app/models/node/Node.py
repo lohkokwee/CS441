@@ -2,9 +2,10 @@ import os
 import socket
 import time
 import threading
-from models.util import print_brk, print_node_help, print_command_not_found
-from models.arp.ARPTable import ARPTable
 from models.payload.EthernetFrame import EthernetFrame
+from models.payload.IPPacket import IPPacket
+from models.arp.ARPTable import ARPTable
+from models.util import print_brk, print_node_help, print_command_not_found
 
 class Node:
   node_ip_address = None # Assigned by router  - See Router.receive_node_connection_data()
@@ -78,8 +79,7 @@ class Node:
     while True:
       try:
         data = self.router_int_socket.recv(1024)
-        if not data:
-          # When connection ends from router
+        if not data: # When connection ends from router
           print("Connection from router interface terminated. Node terminated.")
           self.router_int_socket.close()
           os._exit(0)
@@ -89,6 +89,7 @@ class Node:
         if is_valid_payload and payload[:2] != "0x":
           print("Ethernet frame received: ", payload)
           frame = EthernetFrame.loads(payload)
+
           if frame.is_recipient(self.node_mac):
             print("Intended recipient, retrieving data...")
             print(f"Data: {frame.data}")
@@ -100,6 +101,7 @@ class Node:
           print(payload)
 
         print_brk()
+
       except: # Remove this exception to see potential crashes here
         print("Node terminated.")
         return # Should only occur when handle_input receives "quit"
@@ -107,10 +109,13 @@ class Node:
   def handle_input(self):
     while True:
       node_input = input()
-      if node_input == "quit":
+      if node_input == "quit" or node_input == "q":
         print("Terminating node and connection with router interface...")
         self.router_int_socket.close()
         os._exit(0)
+
+      elif node_input == "help" or node_input == "h":
+        print_node_help()
 
       elif node_input == "eth":
         payload = EthernetFrame.input_sequence(self.node_mac).dumps()
@@ -119,7 +124,10 @@ class Node:
         print_brk()
 
       elif node_input == "ip":
-        print("IP protocol in progress.")
+        payload = IPPacket.input_sequence(self.node_ip_address).dumps()
+        self.router_int_socket.send(bytes(payload, "utf-8"))
+        print("IP packet sent. [Completed]")
+        print_brk()
       
       elif node_input == "reply":
         arp_response_payload = EthernetFrame.arp_reply_sequence(self.router_int_mac, self.node_mac).dumps()
@@ -133,6 +141,10 @@ class Node:
 
       elif node_input == "help":
         print_node_help()
+        payload = IPPacket.input_sequence(self.node_ip_address).dumps()
+        self.router_int_socket.send(bytes(payload, "utf-8"))
+        print("IP packet sent. [Completed]")
+        print_brk()
       
       else:
         print_command_not_found(device = "node")
@@ -143,8 +155,8 @@ class Node:
     self.router_int_socket.connect(self.router_int_address)
     self.node_connection_request()
     try:
-      threading.Thread(target=self.listen).start()
-      print_node_help()
+      threading.Thread(target = self.listen).start()
+      print_node_help(False)
       self.handle_input()
 
     except KeyboardInterrupt:

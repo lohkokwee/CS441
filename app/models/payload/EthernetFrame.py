@@ -6,10 +6,10 @@ class EthernetFrame:
     Layer 2 communications will not be broadcasted over router interface if no MAC address is found in ARP tables.
   '''
 
-  destination = None
-  source = None
-  data_length = None
-  data = None
+  destination: str = None
+  source: str = None
+  data_length: int = None
+  data: str = None
 
   def __init__(
     self,
@@ -48,8 +48,8 @@ class EthernetFrame:
     '''
     print_brk()
     print("Create an ethernet frame by entering the following infomration into the console.")
-    dest_mac = input("Enter destination MAC address... [1/2]\n")
-    data = input("Enter payload... [2/2]\n")
+    dest_mac = input("Enter destination MAC address... [1/2]\n> ")
+    data = input("Enter payload... [2/2]\n> ")
     return EthernetFrame(dest_mac, src_mac, data)
 
   @staticmethod

@@ -2,13 +2,20 @@ import os
 import socket
 import time
 import threading
-from models.util import print_brk
 from models.arp.ARPTable import ARPTable
-from models.util import print_brk, print_router_help, print_command_not_found
+from models.payload.IPPacket import IPPacket
+from models.payload.EthernetFrame import EthernetFrame
+from models.util import print_brk, print_command_not_found, print_router_int_help
+import traceback
 
 class RouterInterface:
+  '''
+    Definitions:
+      - int: represents "interface"
+  '''
   router_int_address = None
   router_int_ip_address = None
+  router_int_ip_prefix = None
   router_int_mac = None
   router_int_socket = None
 
@@ -33,6 +40,7 @@ class RouterInterface:
   ):
     self.router_int_address = (router_int_host, router_int_port)
     self.router_int_ip_address = router_int_ip_address
+    self.router_int_ip_prefix = router_int_ip_address[:3]
     self.router_int_mac = router_int_mac
     self.max_connections = max_connections
     self.router_int_relay_addresses = router_int_relay_addresses
@@ -41,7 +49,7 @@ class RouterInterface:
     self.router_int_socket.bind(self.router_int_address)
 
   def get_available_ip_address(self):
-    assigned_ip_addresses = self.arp_table.get_assigned_ip_addresses()
+    assigned_ip_addresses = self.arp_table.get_used_ip_addresses()
     for i in range(self.max_connections):
       check_ip = f"0x{(int(self.router_int_ip_address, 0) + 9 + i):X}"
       if not (check_ip in assigned_ip_addresses):
@@ -107,6 +115,30 @@ class RouterInterface:
       connected_socket.send(bytes(payload, "utf-8"))
     print("Ethernet frame broadcasted.")
 
+  def route_ip_packet_data(self, payload: str):
+    '''
+      Emulates IP packet routing to nodes with socket unicast.
+    '''
+    print("Checking IP packet destination... [1/2]")
+    ip_packet: IPPacket = IPPacket.loads(payload)
+    if ip_packet.dest_ip_prefix() == self.router_int_ip_prefix:
+      print("Broadcasting de-capsulated IP packets to connected nodes... [2/2]")
+      dest_mac = self.arp_table.get_corresponding_mac(ip_packet.destination)
+      ethernet_frame_payload: EthernetFrame = ip_packet.to_eth_frame(dest_mac, self.router_int_mac).dumps()
+      self.broadcast_ethernet_frame_data(ethernet_frame_payload)
+
+    else:
+      print("Destination not in LAN.")
+      ip_addresses = self.router_int_arp_table.get_used_ip_addresses()
+      print("Routing packet to LAN with destination prefix... [2/2]")
+      for ip_address in ip_addresses:
+        if ip_address[:3] == ip_packet.dest_ip_prefix(): # If IP prefix matches, send data to IP address
+          corresponding_socket = self.router_int_arp_table.get_corresponding_socket(ip_address)
+          corresponding_socket.send(bytes(payload, "utf-8"))
+          break
+    
+    print("IP packet routed. [Completed]")
+
   def listen(self, corresponding_socket: socket.socket, ip_address: str, mac_address: str):
     '''
       Listens to node and broadcasts packet to receipient.
@@ -143,6 +175,10 @@ class RouterInterface:
             print("Ethernet frame received: ", payload)
             self.broadcast_ethernet_frame_data(payload)
 
+          elif payload[:2] == "0x":
+            print("IP packet received: ", payload)
+            self.route_ip_packet_data(payload)
+
         print_brk()
       except ConnectionResetError as cre:
         # Raise exception here when node connection closes
@@ -157,6 +193,8 @@ class RouterInterface:
         return # End thread
 
       except:
+        traceback.print_exc()
+        print_brk()
         corresponding_socket.close()
         os._exit(0)
 
@@ -314,30 +352,50 @@ class RouterInterface:
 
   def handle_input(self):
     while True:
-      router_input = input()
-      if router_input == "quit":
-        print("Terminating router and connection with other interfaces...")
-        self.router_int_socket.close()
+      router_int_input = input()
+      if router_int_input == "quit" or router_int_input == "q":
+        print("Terminating router interface and all existing connections...")
+        for corresponding_socket in self.arp_table.get_all_sockets() + self.router_int_arp_table.get_all_sockets():
+          corresponding_socket.close()
+        print(f"Router interface {self.router_int_ip_address} terminating.")
         os._exit(0)
 
-      elif router_input == "whoami":
+      elif router_int_input == "whoami":
         print(f"Router's address is {self.router_int_address}")
         print(f"Router's IP address is {self.router_int_ip_address}")
         print(f"Router's MAC address is {self.router_int_mac}")
         print(f"Router's relay addresses are {self.router_int_relay_addresses}")
 
-      elif router_input == "arp":
+      elif router_int_input == "arp":
         print("IP Address \t MAC Address")
         print_brk()
         for ip_add, details in self.arp_table.to_dict().items():
           print(f"{ip_add} \t\t {details['mac']}")
 
       # todo: implement ARP broadcast
-      elif router_input == "broadcast":
+      elif router_int_input == "broadcast":
         self.broadcast_arp_query()
 
-      elif router_input == "help":
-        print_router_help()
+      elif router_int_input == "help" or router_int_input == "h":
+        print_router_int_help()
+
+      elif router_int_input == "arp -a":
+        print("Displaying all ARP tables...")
+        print("ARP tables for with connected nodes.")
+        self.arp_table.pprint()
+        print("ARP tables for with connected router interfaces.")
+        self.router_int_arp_table.pprint()
+        print_brk()
+      
+      elif router_int_input == "arp -n":
+        print("Displaying ARP tables with connected nodes...")
+        self.arp_table.pprint()
+        print_brk()
+
+      elif router_int_input == "arp -r":
+        print("Displaying ARP tables with connected router interfaces...")
+        self.router_int_arp_table.pprint()
+        print_brk()
       
       else:
         print_command_not_found(device = "router_interface")
@@ -374,6 +432,16 @@ class RouterInterface:
         print("UnboundLocalError in broadcast_arp_query")
         return
 
+  def receive_connections(self):
+    '''
+      Receives connections on a separate thread for the lifecycle of the router interface.
+    '''
+    self.router_int_socket.listen(self.max_connections)
+    while True:
+      corresponding_socket, corresponding_address = self.router_int_socket.accept()
+      threading.Thread(target=self.handle_connection, args=(corresponding_socket, )).start()
+      
+
   def run(self):
     print_brk()
     print(f"Router interface starting with mac {self.router_int_mac} and ip address of {self.router_int_ip_address}...")
@@ -385,20 +453,15 @@ class RouterInterface:
         corresponding_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         corresponding_socket.connect(address)
         self.handle_router_int_connection(corresponding_socket)
-      
-    print_router_help()
-    # opens another thread to handle input
-    threading.Thread(target=self.handle_input).start()
-
+  
     try:
-      self.router_int_socket.listen(self.max_connections)
-      while True:
-        corresponding_socket, corresponding_address = self.router_int_socket.accept()
-        # Start a seperate thread for every client
-        threading.Thread(target=self.handle_connection, args=(corresponding_socket, )).start()
+      threading.Thread(target=self.receive_connections).start()
+      print_router_int_help(False)
+      self.handle_input()
 
     except:
+      traceback.print_exc()
+      print_brk()
       print(f"Router interface {self.router_int_ip_address} terminating.")
-      corresponding_socket.close()
       print_brk()
       os._exit(0)
