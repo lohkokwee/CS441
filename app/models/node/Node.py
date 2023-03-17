@@ -136,8 +136,7 @@ class Node:
         print_brk()
 
       elif node_input == "whoami":
-        # todo: include IP address once implemented
-        print(f"Node MAC address is {self.node_mac}")
+        print(f"Node MAC address is {self.node_mac} and IP address is {self.node_ip_address}")
 
       elif node_input == "help":
         print_node_help()
