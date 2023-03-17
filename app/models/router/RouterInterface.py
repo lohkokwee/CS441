@@ -2,12 +2,20 @@ import os
 import socket
 import time
 import threading
-from models.util import print_brk
 from models.arp.ARPTable import ARPTable
+from models.payload.IPPacket import IPPacket
+from models.payload.EthernetFrame import EthernetFrame
+from models.util import print_brk
+import traceback
 
 class RouterInterface:
+  '''
+    Definitions:
+      - int: represents "interface"
+  '''
   router_int_address = None
   router_int_ip_address = None
+  router_int_ip_prefix = None
   router_int_mac = None
   router_int_socket = None
 
@@ -28,6 +36,7 @@ class RouterInterface:
   ):
     self.router_int_address = (router_int_host, router_int_port)
     self.router_int_ip_address = router_int_ip_address
+    self.router_int_ip_prefix = router_int_ip_address[:3]
     self.router_int_mac = router_int_mac
     self.max_connections = max_connections
     self.router_int_relay_addresses = router_int_relay_addresses
@@ -36,7 +45,7 @@ class RouterInterface:
     self.router_int_socket.bind(self.router_int_address)
 
   def get_available_ip_address(self):
-    assigned_ip_addresses = self.arp_table.get_assigned_ip_addresses()
+    assigned_ip_addresses = self.arp_table.get_used_ip_addresses()
     for i in range(self.max_connections):
       check_ip = f"0x{(int(self.router_int_ip_address, 0) + 9 + i):X}"
       if not (check_ip in assigned_ip_addresses):
@@ -102,6 +111,30 @@ class RouterInterface:
       connected_socket.send(bytes(payload, "utf-8"))
     print("Ethernet frame broadcasted.")
 
+  def route_ip_packet_data(self, payload: str):
+    '''
+      Emulates IP packet routing to nodes with socket unicast.
+    '''
+    print("Checking IP packet destination... [1/2]")
+    ip_packet: IPPacket = IPPacket.loads(payload)
+    if ip_packet.dest_ip_prefix() == self.router_int_ip_prefix:
+      print("Broadcasting de-capsulated IP packets to connected nodes... [2/2]")
+      dest_mac = self.arp_table.get_corresponding_mac(ip_packet.destination)
+      ethernet_frame_payload: EthernetFrame = ip_packet.to_eth_frame(dest_mac, self.router_int_mac).dumps()
+      self.broadcast_ethernet_frame_data(ethernet_frame_payload)
+
+    else:
+      print("Destination not in LAN.")
+      ip_addresses = self.router_int_arp_table.get_used_ip_addresses()
+      print("Routing packet to LAN with destination prefix... [2/2]")
+      for ip_address in ip_addresses:
+        if ip_address[:3] == ip_packet.dest_ip_prefix(): # If IP prefix matches, send data to IP address
+          corresponding_socket = self.router_int_arp_table.get_corresponding_socket(ip_address)
+          corresponding_socket.send(bytes(payload, "utf-8"))
+          break
+    
+    print("IP packet routed. [Completed]")
+
   def listen(self, corresponding_socket: socket.socket, ip_address: str, mac_address: str):
     '''
       Listens to node and broadcasts packet to receipient.
@@ -124,6 +157,11 @@ class RouterInterface:
         if is_valid_payload and payload[:2] != "0x":
           print("Ethernet frame received: ", payload)
           self.broadcast_ethernet_frame_data(payload)
+        
+        elif is_valid_payload and payload[:2] == "0x":
+          print("IP packet received: ", payload)
+          self.route_ip_packet_data(payload)
+
         print_brk()
       except ConnectionResetError as cre:
         # Raise exception here when node connection closes
@@ -138,6 +176,8 @@ class RouterInterface:
         return # End thread
 
       except:
+        traceback.print_exc()
+        print_brk()
         corresponding_socket.close()
         os._exit(0)
 

@@ -21,7 +21,7 @@ class ARPTable:
     }
     return
 
-  def get_assigned_ip_addresses(self):
+  def get_used_ip_addresses(self):
     return set(self.arp_table.keys())
 
   def destroy_arp_connection(self, ip_address: str) -> bool:
