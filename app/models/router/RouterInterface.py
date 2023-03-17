@@ -166,11 +166,8 @@ class RouterInterface:
           if payload_sections[0] == self.router_int_mac and payload_sections[-1] == "arp_response":
             self.arp_response = True
             print(f"ARP response received, updating ARP table for {self.arp_last_broadcasted_ip}...")
-            print(payload)
 
-            # todo: update arp_table_ip_last_updated and set arp_last_broadcasted_ip to None
-            # don't return?
-            # return
+            # Update arp_table_ip_last_updated and set arp_last_broadcasted_ip to None
             incoming_mac = payload.split("|")[1]
             self.arp_table.update_arp_table(
               self.arp_last_broadcasted_ip,
