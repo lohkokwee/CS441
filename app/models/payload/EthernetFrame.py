@@ -49,7 +49,5 @@ class EthernetFrame:
     print_brk()
     print("Create an ethernet frame by entering the following infomration into the console.")
     dest_mac = input("Enter destination MAC address... [1/2]\n> ")
-    print()
     data = input("Enter payload... [2/2]\n> ")
-    print()
     return EthernetFrame(dest_mac, src_mac, data)
