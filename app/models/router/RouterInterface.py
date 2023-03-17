@@ -25,6 +25,7 @@ class RouterInterface:
   arp_table = ARPTable()
   router_int_arp_table = ARPTable()
 
+  # to keep track of which IP to assign MAC to
   arp_last_broadcasted_ip = None
   arp_table_ip_last_updated = None
   arp_response = False
@@ -165,11 +166,17 @@ class RouterInterface:
           if payload_sections[0] == self.router_int_mac and payload_sections[-1] == "arp_response":
             self.arp_response = True
             print(f"ARP response received, updating ARP table for {self.arp_last_broadcasted_ip}...")
-            print(payload)
 
-            # todo: update arp_table_ip_last_updated and set arp_last_broadcasted_ip to None
-            # don't return?
-            # return
+            # Update arp_table_ip_last_updated and set arp_last_broadcasted_ip to None
+            incoming_mac = payload.split("|")[1]
+            self.arp_table.update_arp_table(
+              self.arp_last_broadcasted_ip,
+              incoming_mac,
+              corresponding_socket
+            )
+
+            self.arp_table_ip_last_updated = self.arp_last_broadcasted_ip
+            self.arp_last_broadcasted_ip = None
             
           elif payload[:2] != "0x":
             print("Ethernet frame received: ", payload)
@@ -372,7 +379,6 @@ class RouterInterface:
         for ip_add, details in self.arp_table.to_dict().items():
           print(f"{ip_add} \t\t {details['mac']}")
 
-      # todo: implement ARP broadcast
       elif router_int_input == "broadcast":
         self.broadcast_arp_query()
 
@@ -406,7 +412,6 @@ class RouterInterface:
       1. Sends out a broadcast to all hosts within LAN.
       2. If reply matches, then update MAC table.
     '''
-    # todo: implement this
     self.arp_response = False
     # 0. Get user input on which IP to get
     target_ip = input("What is the IP address of the MAC you wish to get: ")
@@ -415,8 +420,6 @@ class RouterInterface:
     print("Broadcasting ARP query to all in same LAN...")
 
     connected_sockets = self.arp_table.get_all_sockets()
-    print("Number of connected sockets = " + str(len(connected_sockets)))
-    print("Number of threads = " + str(threading.enumerate()))
     
     # Broadcast
     while not self.arp_response: 

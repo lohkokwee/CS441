@@ -13,7 +13,6 @@ def print_node_help(has_top_break: bool = True):
   print("- (h)elp \t Display command menu.")
   print("- eth \t Create an ethernet packet.")
   print("- ip \t Create an IP packet.")
-  # todo: implement arp broadcast reply
   print("- reply \t\t Reply ARP broadcast query.")
   print("- whoami \t Bring up current ip and mac address.")
   print_brk()
@@ -30,7 +29,6 @@ def print_router_int_help(has_top_break: bool = True):
   print("- arp -r \t Display ARP tables with connected router interfaces.")
   print("- whoami \t Bring up current ip and mac address.")
   print("- arp \t\t Bring up current ARP table.")
-  # todo: implement arp broadcast
   print("- broadcast \t Broadcast an ARP query")
 
 def print_command_not_found(device: Literal["node", "router_interface"]):
