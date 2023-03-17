@@ -1,5 +1,6 @@
 from typing import Dict, TypedDict, Union, List
 import socket
+import json
 
 class ARPTable:
   class ARPRecord(TypedDict):
@@ -8,11 +9,14 @@ class ARPTable:
     '''
     mac: str
     corresponding_socket: Union[socket.socket, None] 
-  
+
   arp_table: Dict[str, ARPRecord] = None
 
   def __init__(self):
     self.arp_table = {}
+
+  def __str__(self):
+    return 
 
   def update_arp_table(self, ip_address: str, mac_address: str, corresponding_socket: Union[socket.socket, None] = None) -> None:
     self.arp_table[ip_address] = {
@@ -42,3 +46,6 @@ class ARPTable:
 
   def to_dict(self) -> dict:
     return self.arp_table
+
+  def pprint(self) -> None:
+    print(json.dumps({ip_address: self.arp_table[ip_address]["mac"] for ip_address in self.arp_table}, indent=2))

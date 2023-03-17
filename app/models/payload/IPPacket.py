@@ -64,6 +64,6 @@ class IPPacket:
     print_brk()
     print("Create a IP packet by entering the following infomration into the console.")
     dest_ip = input("Enter destination IP address... [1/3]\n> ")
-    protocol = input("Enter protocol... [2/3]\n- 0\t Ping protocol\n- 1\t Log protocol\n- 2\t Kill protocol\n> ")
+    protocol = input("Enter protocol... [2/3]\n- 0 \t Ping protocol\n- 1 \t Log protocol\n- 2 \t Kill protocol\n> ")
     data = input("Enter payload... [3/3]\n> ")
     return IPPacket(dest_ip, src_ip, protocol, data)

@@ -109,6 +109,9 @@ class Node:
         self.router_int_socket.close()
         os._exit(0)
 
+      elif node_input == "help" or node_input == "h":
+        print_node_help()
+
       elif node_input == "eth":
         payload = EthernetFrame.input_sequence(self.node_mac).dumps()
         self.router_int_socket.send(bytes(payload, "utf-8"))
@@ -120,9 +123,6 @@ class Node:
         self.router_int_socket.send(bytes(payload, "utf-8"))
         print("IP packet sent. [Completed]")
         print_brk()
-
-      elif node_input == "help" or node_input == "h":
-        print_node_help()
       
       else:
         print_command_not_found(device = "node")

@@ -5,7 +5,7 @@ import threading
 from models.arp.ARPTable import ARPTable
 from models.payload.IPPacket import IPPacket
 from models.payload.EthernetFrame import EthernetFrame
-from models.util import print_brk
+from models.util import print_brk, print_command_not_found, print_router_int_help
 import traceback
 
 class RouterInterface:
@@ -328,6 +328,48 @@ class RouterInterface:
     if ip_address and mac_address:
       threading.Thread(target=self.listen, args=(corresponding_socket, ip_address, mac_address, )).start()
 
+  def receive_connections(self):
+    '''
+      Receives connections on a separate thread for the lifecycle of the router interface.
+    '''
+    self.router_int_socket.listen(self.max_connections)
+    while True:
+      corresponding_socket, corresponding_address = self.router_int_socket.accept()
+      threading.Thread(target=self.handle_connection, args=(corresponding_socket, )).start() # Start a seperate thread for every client
+
+  def handle_input(self):
+    while True:
+      router_int_input = input()
+      if router_int_input == "quit" or router_int_input == "q":
+        print("Terminating router interface and all existing connections...")
+        for corresponding_socket in self.arp_table.get_all_sockets() + self.router_int_arp_table.get_all_sockets():
+          corresponding_socket.close()
+        print(f"Router interface {self.router_int_ip_address} terminating.")
+        os._exit(0)
+
+      elif router_int_input == "help" or router_int_input == "h":
+        print_router_int_help()
+
+      elif router_int_input == "arp -a":
+        print("Displaying all ARP tables...")
+        print("ARP tables for with connected nodes.")
+        self.arp_table.pprint()
+        print("ARP tables for with connected router interfaces.")
+        self.router_int_arp_table.pprint()
+        print_brk()
+      
+      elif router_int_input == "arp -n":
+        print("Displaying ARP tables with connected nodes...")
+        self.arp_table.pprint()
+        print_brk()
+
+      elif router_int_input == "arp -r":
+        print("Displaying ARP tables with connected router interfaces...")
+        self.router_int_arp_table.pprint()
+        print_brk()
+
+      else:
+        print_command_not_found(device = "router_interface")
 
   def run(self):
     print_brk()
@@ -340,15 +382,15 @@ class RouterInterface:
         corresponding_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         corresponding_socket.connect(address)
         self.handle_router_int_connection(corresponding_socket)
-    
+  
     try:
-      self.router_int_socket.listen(self.max_connections)
-      while True:
-        corresponding_socket, corresponding_address = self.router_int_socket.accept()
-        threading.Thread(target=self.handle_connection, args=(corresponding_socket, )).start() # Start a seperate thread for every client
+      threading.Thread(target=self.receive_connections).start()
+      print_router_int_help(False)
+      self.handle_input()
 
     except:
+      traceback.print_exc()
+      print_brk()
       print(f"Router interface {self.router_int_ip_address} terminating.")
-      corresponding_socket.close()
       print_brk()
       os._exit(0)
