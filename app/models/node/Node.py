@@ -9,6 +9,7 @@ from models.arp.ARPTable import ARPTable
 from models.firewall.Firewall import Firewall
 from models.protocols.Ping import Ping
 from models.protocols.Log import Log
+from models.protocols.Kill import Kill
 from models.util import print_brk, print_node_help, print_command_not_found
 
 class Node:
@@ -23,6 +24,7 @@ class Node:
   # Can initialise firewall with pre-configured lists if needed
   firewall = Firewall()
   ping_protocol = Ping()
+  kill_protocol = Kill()
 
   def __init__(
     self,
@@ -52,7 +54,7 @@ class Node:
     
     print(f"IP address {assigned_ip_address} assigned.")
     print(f"Updating ARP tables... [2/3]")
-    self.arp_table.update_arp_table(assigned_ip_address, router_int_mac)
+    self.arp_table.update_arp_table(assigned_ip_address, router_int_mac, self.router_int_socket)
     self.node_ip_address = assigned_ip_address
     return self.node_ip_address, router_int_mac
 
@@ -89,8 +91,11 @@ class Node:
       if ethernet_frame.data.protocol and ethernet_frame.data.protocol[0] == "0":
         self.ping_protocol.handle_ping(ethernet_frame, corresponding_socket)
 
-      if ethernet_frame.data.protocol and ethernet_frame.data.protocol[0] == "1":
+      elif ethernet_frame.data.protocol and ethernet_frame.data.protocol[0] == "1":
         Log.log(ethernet_frame)
+
+      elif ethernet_frame.data.protocol and ethernet_frame.data.protocol[0] == "2":
+        self.kill_protocol.kill(self.arp_table)
         
     else:
       print("Unintended recipient.")
@@ -167,7 +172,15 @@ class Node:
 
       elif node_input == "ip":
         ip_packet = IPPacket.input_sequence(self.node_ip_address)
-        self.send_ip_packet(ip_packet, self.router_int_socket)
+        if ip_packet:
+          self.send_ip_packet(ip_packet, self.router_int_socket)
+        else:
+          print_command_not_found("node")
+
+      elif node_input == "arp":
+        print("Displaying all ARP tables...")
+        self.arp_table.pprint()
+        print_brk()
       
       elif node_input == "reply":
         print_brk()
@@ -179,6 +192,9 @@ class Node:
       # Handling input to update and view black or whitelists
       elif node_input == "firewall":
         self.firewall.handle_firewall_input()
+
+      elif node_input == "kill":
+        self.kill_protocol.handle_kill_protocol_input()
 
       elif node_input == "whoami":
         print_brk()

@@ -13,8 +13,10 @@ def print_node_help(has_top_break: bool = True):
   print("- (h)elp \t Display command menu.")
   print("- eth \t\t Create an ethernet packet.")
   print("- ip \t\t Create an IP packet.")
+  print("- arp \t\t Display all ARP tables.")
   print("- reply \t Reply ARP broadcast query.")
   print("- firewall \t Read or configure firewall options.")
+  print("- kill \t\t Configure kill protocol options.")
   print("- whoami \t Bring up current ip and mac address.")
   print_brk()
 
