@@ -1,6 +1,6 @@
 from __future__ import annotations
 from models.payload.EthernetData import EthernetData
-from models.util import print_brk
+from models.util import print_brk, encode_data, decode_data
 
 class EthernetFrame:
   '''
@@ -26,7 +26,7 @@ class EthernetFrame:
     '''
       Dumps the current EthernetFrame into a str format for transmission.
     '''
-    return f"{self.destination}|{self.source}|{self.data_length}|{self.data.dumps()}"
+    return f"{self.destination}|{self.source}|{self.data_length}|{encode_data(self.data.dumps())}"
 
   @staticmethod
   def loads(payload: str) -> EthernetFrame:
@@ -34,7 +34,7 @@ class EthernetFrame:
       Receives EthernetFrame in a dumped (str) format from EthernetFrame.dump() and loads an EthernetFrame object.
     '''
     dest_mac, src_mac, data_length, data = payload.split("|")
-    return EthernetFrame(dest_mac, src_mac, data)
+    return EthernetFrame(dest_mac, src_mac, decode_data(data))
 
   def is_recipient(self, mac_address: str) -> bool:
     if mac_address == self.destination:
