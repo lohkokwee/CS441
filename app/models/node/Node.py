@@ -142,13 +142,6 @@ class Node:
         print(f"Node's MAC address is {self.node_mac}")
         print_brk()
 
-      elif node_input == "help":
-        print_node_help()
-        payload = IPPacket.input_sequence(self.node_ip_address).dumps()
-        self.router_int_socket.send(bytes(payload, "utf-8"))
-        print("IP packet sent. [Completed]")
-        print_brk()
-      
       else:
         print_command_not_found(device = "node")
 
