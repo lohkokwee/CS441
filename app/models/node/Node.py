@@ -130,13 +130,17 @@ class Node:
         print_brk()
       
       elif node_input == "reply":
+        print_brk()
         arp_response_payload = EthernetFrame.arp_reply_sequence(self.router_int_mac, self.node_mac).dumps()
         self.router_int_socket.send(bytes(arp_response_payload, "utf-8"))
         print("ARP response sent.")
         print_brk()
 
       elif node_input == "whoami":
-        print(f"Node MAC address is {self.node_mac} and IP address is {self.node_ip_address}")
+        print_brk()
+        print(f"Node's IP address is {self.node_ip_address}")
+        print(f"Node's MAC address is {self.node_mac}")
+        print_brk()
 
       elif node_input == "help":
         print_node_help()

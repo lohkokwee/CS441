@@ -140,6 +140,33 @@ class RouterInterface:
     
     print("IP packet routed. [Completed]")
 
+  def handle_ethernet_frame(self, ethernet_frame: EthernetFrame, corresponding_socket: socket.socket) -> None:
+    # Checks whether frame is query reply, if yes, update ARP table
+    if ethernet_frame.destination == self.router_int_mac and ethernet_frame.data == "arp_response":
+      self.arp_response = True
+      print(f"ARP response received, updating ARP table for {self.arp_last_broadcasted_ip}...")
+
+      # Update arp_table_ip_last_updated and set arp_last_broadcasted_ip to None
+      self.arp_table.update_arp_table(
+        self.arp_last_broadcasted_ip,
+        ethernet_frame.source,
+        corresponding_socket
+      )
+      self.arp_table_ip_last_updated = self.arp_last_broadcasted_ip
+      self.arp_last_broadcasted_ip = None
+      print("ARP table successfully updated.")
+      
+    else:
+      payload = ethernet_frame.dumps()
+      print("Ethernet frame received: ", payload)
+      self.broadcast_ethernet_frame_data(payload)
+
+  def handle_ip_packet(self, ip_packet: IPPacket, corresponding_socket: socket.socket) -> None:
+    payload = ip_packet.dumps()
+    print("IP packet received: ", payload)
+    self.route_ip_packet_data(payload)
+
+
   def listen(self, corresponding_socket: socket.socket, ip_address: str, mac_address: str):
     '''
       Listens to node and broadcasts packet to receipient.
@@ -162,31 +189,16 @@ class RouterInterface:
         is_valid_payload = len(payload_sections) > 1
 
         if is_valid_payload:
-          # Checks whether frame is query reply, if yes, update ARP table
-          if payload_sections[0] == self.router_int_mac and payload_sections[-1] == "arp_response":
-            self.arp_response = True
-            print(f"ARP response received, updating ARP table for {self.arp_last_broadcasted_ip}...")
-
-            # Update arp_table_ip_last_updated and set arp_last_broadcasted_ip to None
-            incoming_mac = payload.split("|")[1]
-            self.arp_table.update_arp_table(
-              self.arp_last_broadcasted_ip,
-              incoming_mac,
-              corresponding_socket
-            )
-
-            self.arp_table_ip_last_updated = self.arp_last_broadcasted_ip
-            self.arp_last_broadcasted_ip = None
+          if payload[:2] != "0x":
+            ethernet_frame = EthernetFrame.loads(payload)
+            self.handle_ethernet_frame(ethernet_frame, corresponding_socket)
             
-          elif payload[:2] != "0x":
-            print("Ethernet frame received: ", payload)
-            self.broadcast_ethernet_frame_data(payload)
-
           elif payload[:2] == "0x":
-            print("IP packet received: ", payload)
-            self.route_ip_packet_data(payload)
-
+            ip_packet = IPPacket.loads(payload)
+            self.handle_ip_packet(ip_packet, corresponding_socket)
+        
         print_brk()
+
       except ConnectionResetError as cre:
         # Raise exception here when node connection closes
         # For windows OS
@@ -368,38 +380,36 @@ class RouterInterface:
         os._exit(0)
 
       elif router_int_input == "whoami":
+        print_brk()
         print(f"Router's address is {self.router_int_address}")
         print(f"Router's IP address is {self.router_int_ip_address}")
         print(f"Router's MAC address is {self.router_int_mac}")
         print(f"Router's relay addresses are {self.router_int_relay_addresses}")
-
-      elif router_int_input == "arp":
-        print("IP Address \t MAC Address")
         print_brk()
-        for ip_add, details in self.arp_table.to_dict().items():
-          print(f"{ip_add} \t\t {details['mac']}")
+
 
       elif router_int_input == "broadcast":
+        print_brk()
         self.broadcast_arp_query()
 
       elif router_int_input == "help" or router_int_input == "h":
         print_router_int_help()
 
-      elif router_int_input == "arp -a":
+      elif router_int_input == "arp":
         print("Displaying all ARP tables...")
-        print("ARP tables for with connected nodes.")
+        print("> ARP tables for with connected nodes (IP:MAC).")
         self.arp_table.pprint()
-        print("ARP tables for with connected router interfaces.")
+        print("> ARP tables for with connected router interfaces (IP:MAC).")
         self.router_int_arp_table.pprint()
         print_brk()
       
       elif router_int_input == "arp -n":
-        print("Displaying ARP tables with connected nodes...")
+        print("Displaying ARP tables with connected nodes (IP:MAC)...")
         self.arp_table.pprint()
         print_brk()
 
       elif router_int_input == "arp -r":
-        print("Displaying ARP tables with connected router interfaces...")
+        print("Displaying ARP tables with connected router interfaces (IP:MAC)...")
         self.router_int_arp_table.pprint()
         print_brk()
       
@@ -414,7 +424,7 @@ class RouterInterface:
     '''
     self.arp_response = False
     # 0. Get user input on which IP to get
-    target_ip = input("What is the IP address of the MAC you wish to get: ")
+    target_ip = input("What is the IP address of the MAC you wish to get.\n> ")
     self.arp_last_broadcasted_ip = target_ip
 
     print("Broadcasting ARP query to all in same LAN...")
