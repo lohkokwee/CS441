@@ -104,29 +104,31 @@ class Node:
           self.router_int_socket.close()
           os._exit(0)
         
-        # Format of paylaod
-        # dst_ip|src_ip|dst_mac|src_mac|len_data|<protocol_num>-<str_data>
-        payload = data.decode("utf-8")
-        payload_sections = payload.split("|")
-        is_valid_payload = len(payload_sections) > 1
+        '''
+          Valid payload will always be an ethernet packet.
+            1. Check validity of payload by checking that incoming message from socket has segments.
+            2. If payload valid, load payload data as an EthernetFrame.
+            3. EthernetFrame contains IP packet header data within EthernetFrame.data for firewall/protocols.
+        '''
 
-        # Format of frame data = dst_mac|src_mac|len_data|<protocol_num>-<str_data>
-        frame_data = "|".join(payload_sections[2:]) if payload[:2] == "0x" else payload
-        src_ip = payload_sections[1] if payload[:2] == "0x" else ""
+        payload = data.decode("utf-8")
+        payload_segments = payload.split("|")
+        is_valid_payload = len(payload_segments) > 1
 
         # Handle and reply to ARP broadcast query here
         if payload[:10] == "Who has IP":
           print(payload)
 
-        # Check for IP header and drop if in firewall
-        elif src_ip in self.firewall.get_blacklist() and not self.firewall.is_disabled():
-          print(f"Packet from {src_ip} filtered and dropped by firewall.")
+        if is_valid_payload: # Validation checks for ethernet frame data
+          print(f"Ethernet frame received: {payload}") # Data will be encoded later
+          ethernet_frame = EthernetFrame.loads(payload)
+          src_ip = ethernet_frame.data.src_ip
 
-        elif is_valid_payload and frame_data[:2] != "0x":
-          # Validation checks for ethernet frame data
-          print("Ethernet frame received: ", frame_data)
-          ethernet_frame = EthernetFrame.loads(frame_data)
-          self.handle_ethernet_frame(ethernet_frame, self.router_int_socket)
+          if src_ip in self.firewall.get_blacklist() and not self.firewall.is_disabled():
+            print(f"Packet from {src_ip} filtered and dropped by firewall.")
+          
+          else:
+            self.handle_ethernet_frame(ethernet_frame, self.router_int_socket)
           
         print_brk()
 

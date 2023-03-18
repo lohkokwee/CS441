@@ -42,7 +42,7 @@ class Ping:
 
     while not (self.ping_received) and not (sent_pings == max_pings):
       print(f"Pinging {ip_packet.destination} with {ip_packet.data_length} bytes of data...")
-      corresponding_socket.send((bytes(ip_packet.dumps() , "utf-8")))
+      corresponding_socket.send((bytes(ip_packet.dumps(), "utf-8")))
       sent_pings += 1
       time.sleep(1)
 

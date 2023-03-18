@@ -51,10 +51,10 @@ class IPPacket:
   def to_eth_frame(self, dest_mac: str, src_mac: str) -> EthernetFrame:
     '''
       Converts IP packet (layer 3) to ethernet frame (layer 2) for transmissions within the LAN.
-      Destination and source mac are resolved with ARP tables.
+      Data is loaded into EthernetFrame's EthernetData (with IP headers).
     '''
-    data_with_protocol = f"{self.destination}-{self.source}-{self.protocol}-{self.data}"
-    return EthernetFrame(dest_mac, src_mac, data_with_protocol)
+    data_with_headers = f"{self.destination}-{self.source}-{self.protocol}-{self.data}"
+    return EthernetFrame(dest_mac, src_mac, data_with_headers)
 
   @staticmethod
   def input_sequence(src_ip: str) -> IPPacket:
