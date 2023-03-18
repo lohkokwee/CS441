@@ -7,6 +7,7 @@ from models.payload.EthernetFrame import EthernetFrame
 from models.payload.IPPacket import IPPacket
 from models.arp.ARPTable import ARPTable
 from models.protocols.Ping import Ping
+from models.protocols.Log import Log
 from models.util import print_brk, print_node_help, print_command_not_found
 
 class Node:
@@ -85,6 +86,9 @@ class Node:
       if ethernet_frame.data.protocol and ethernet_frame.data.protocol[0] == "0":
         self.ping_protocol.handle_ping(ethernet_frame, corresponding_socket)
 
+      if ethernet_frame.data.protocol and ethernet_frame.data.protocol[0] == "1":
+        Log.log(ethernet_frame)
+        
     else:
       print("Unintended recipient.")
 
@@ -116,9 +120,10 @@ class Node:
         return # Should only occur when handle_input receives "quit"
 
   def send_ip_packet(self, ip_packet: IPPacket, corresponding_socket: socket.socket) -> None:
+    print_brk()
     if ip_packet.protocol == "0":
-      print_brk()
       self.ping_protocol.ping(ip_packet, corresponding_socket)
+
     else:
       self.router_int_socket.send(bytes(ip_packet.dumps(), "utf-8")) # Temporarily handle outgoing packets for other protocols
       print("IP packet sent. [Completed]")
