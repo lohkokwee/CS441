@@ -64,6 +64,12 @@ class IPPacket:
     print_brk()
     print("Create a IP packet by entering the following infomration into the console.")
     dest_ip = input("Enter destination IP address... [1/3]\n> ")
+    while dest_ip[:2] != "0x":
+      dest_ip = input("Destination IP address invalid. Please enter destination IP address again... [1/3]\n> ")
+
     protocol = input("Enter protocol... [2/3]\n- 0 \t Ping protocol\n- 1 \t Log protocol\n- 2 \t Kill protocol\n> ")
+    while not (protocol.isdigit()) or not (int(protocol) in range(3)):
+      protocol = input("Invalid protocol, please enter protocol again... [2/3]\n- 0 \t Ping protocol\n- 1 \t Log protocol\n- 2 \t Kill protocol\n> ")
+
     data = input("Enter payload... [3/3]\n> ")
     return IPPacket(dest_ip, src_ip, protocol, data)

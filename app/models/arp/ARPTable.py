@@ -28,8 +28,15 @@ class ARPTable:
   def get_used_ip_addresses(self):
     return set(self.arp_table.keys())
 
-  def destroy_arp_connection(self, ip_address: str) -> bool:
-    res = self.arp_table.pop(ip_address, False)
+  def destroy_arp_connection(self, ip_address: str, mac_address: str) -> bool:
+    '''
+      Destroys an ARP connection only if IP address and MAC address are aligned.
+      I.e. if another node has assumed IP address, connection won't be destroyed.
+    '''
+    res = False
+    arp_record = self.arp_table.get(ip_address, None)
+    if arp_record and (arp_record["mac"] == mac_address):
+      res = self.arp_table.pop(ip_address, False)
     return bool(res)
 
   def get_corresponding_socket(self, ip_address: str) -> socket.socket:

@@ -78,10 +78,10 @@ class RouterInterface:
     
     return response_mac_address
 
-  def destroy_arp_connections(self, ip_address: str) -> None:
-    is_destroyed = self.arp_table.destroy_arp_connection(ip_address)
+  def destroy_arp_connections(self, ip_address: str, mac_address: str) -> None:
+    is_destroyed = self.arp_table.destroy_arp_connection(ip_address, mac_address)
     if not is_destroyed:
-      self.router_int_arp_table.destroy_arp_connection(ip_address)
+      self.router_int_arp_table.destroy_arp_connection(ip_address, mac_address)
     return
 
   def node_connection_response(self, corresponding_socket: socket.socket) -> tuple[str, str]:
@@ -181,7 +181,7 @@ class RouterInterface:
           print(f"Closing corresponding connections... [1/2]")
           corresponding_socket.close()
           print(f"Unassigning IP address from ARP tables... [2/2]")
-          self.destroy_arp_connections(ip_address)
+          self.destroy_arp_connections(ip_address, mac_address)
           print(f"Connection to {mac_address} terminated. [Completed]")
           print_brk()
           return # End thread
@@ -376,7 +376,8 @@ class RouterInterface:
       router_int_input = input()
       if router_int_input == "quit" or router_int_input == "q":
         print("Terminating router interface and all existing connections...")
-        for corresponding_socket in self.arp_table.get_all_sockets() + self.router_int_arp_table.get_all_sockets():
+        connected_sockets = self.arp_table.get_all_sockets() + self.router_int_arp_table.get_all_sockets()
+        for corresponding_socket in connected_sockets:
           corresponding_socket.close()
         print(f"Router interface {self.router_int_ip_address} terminating.")
         os._exit(0)

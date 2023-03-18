@@ -94,8 +94,8 @@ class Firewall:
     print("- w \t\t View the current whitelist for this node.")
     print("- w -a \t\t Add a node to the whitelist.")
     print("- w -r \t\t Remove a node from the whitelist.")
-    print("- disable \t Disable firewall.")
-    print("- enable \t Enable firewall.")
+    print("- (d)isable \t Disable firewall.")
+    print("- (e)nable \t Enable firewall.")
     print_brk()
 
     user_input = input("> ")
@@ -124,10 +124,10 @@ class Firewall:
       ip_to_add = self.input_ip_sequence("What is the value of the IP you wish to remove from whitelist?\n> ")
       self.remove_from_whitelist(ip_to_add)
 
-    elif user_input == "disable":
+    elif user_input == "disable" or user_input == "d":
       self.disable_firewall()
 
-    elif user_input == "enable":
+    elif user_input == "enable" or user_input == "e":
       self.enable_firewall()
     
     else:
