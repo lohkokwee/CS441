@@ -119,7 +119,7 @@ class Node:
           print(payload)
 
         # Check for IP header and drop if in firewall
-        elif src_ip in self.firewall.get_blacklist():
+        elif src_ip in self.firewall.get_blacklist() and not self.firewall.is_disabled():
           print(f"Packet from {src_ip} filtered and dropped by firewall.")
 
         elif is_valid_payload and frame_data[:2] != "0x":
