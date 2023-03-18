@@ -7,7 +7,9 @@ from models.util import print_brk
 
 class Ping:
   '''
-    Encapsulates ping protocol's methods
+    Encapsulates ping protocol's methods.
+      - ping_sent:        Retains sent state of when ping protocol is triggered to allow termination of ping.
+      - ping_received:    Retains received state of ping, allowing class to recognise when ping fails.
   '''
   ping_sent = False
   ping_received = False
