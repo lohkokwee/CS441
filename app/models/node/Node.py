@@ -7,6 +7,7 @@ from models.payload.EthernetFrame import EthernetFrame
 from models.payload.IPPacket import IPPacket
 from models.arp.ARPTable import ARPTable
 from models.firewall.Firewall import Firewall
+from models.sniffing.Sniffer import Sniffer
 from models.protocols.Ping import Ping
 from models.protocols.Log import Log
 from models.protocols.Kill import Kill
@@ -21,10 +22,10 @@ class Node:
   router_int_socket = None
 
   arp_table = ARPTable()
-  # Can initialise firewall with pre-configured lists if needed
-  firewall = Firewall()
+  firewall = Firewall() # Can initialise firewall with pre-configured lists if needed
   ping_protocol = Ping()
   kill_protocol = Kill()
+  sniffer = Sniffer()
 
   def __init__(
     self,
@@ -96,7 +97,11 @@ class Node:
 
       elif ethernet_frame.data.protocol and ethernet_frame.data.protocol[0] == "2":
         self.kill_protocol.kill(self.arp_table)
-        
+
+    elif self.sniffer.is_sniffing:
+      print("Sniffing enabled...")
+      print(f"Ethernet frame data: {ethernet_frame.data.data}")
+
     else:
       print("Unintended recipient.")
 
@@ -125,7 +130,7 @@ class Node:
           print(payload)
 
         if is_valid_payload: # Validation checks for ethernet frame data
-          print(f"Ethernet frame received: {payload}") # Data will be encoded later
+          print(f"Ethernet frame received: {payload}")
           ethernet_frame = EthernetFrame.loads(payload)
           src_ip = ethernet_frame.data.src_ip
 
@@ -195,6 +200,9 @@ class Node:
 
       elif node_input == "kill":
         self.kill_protocol.handle_kill_protocol_input()
+
+      elif node_input == "sniff":
+        self.sniffer.handle_sniffer_input()
 
       elif node_input == "whoami":
         print_brk()

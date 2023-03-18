@@ -29,6 +29,7 @@ def print_node_help(has_top_break: bool = True):
   print("- reply \t Reply ARP broadcast query.")
   print("- firewall \t Read or configure firewall options.")
   print("- kill \t\t Configure kill protocol options.")
+  print("- sniff \t Configure sniffing functionality.")
   print("- whoami \t Bring up current ip and mac address.")
   print_brk()
 
