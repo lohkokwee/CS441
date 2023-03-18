@@ -5,6 +5,7 @@ import threading
 from models.payload.EthernetFrame import EthernetFrame
 from models.payload.IPPacket import IPPacket
 from models.arp.ARPTable import ARPTable
+from models.firewall.Firewall import Firewall
 from models.util import print_brk, print_node_help, print_command_not_found
 
 class Node:
@@ -16,6 +17,7 @@ class Node:
   router_int_socket = None
 
   arp_table = ARPTable()
+  firewall = Firewall()
 
   def __init__(
     self,
@@ -84,22 +86,39 @@ class Node:
           self.router_int_socket.close()
           os._exit(0)
         
+        # Format of payload = dst_mac|src_mac|len_data|str_data
         payload = data.decode("utf-8")
-        is_valid_payload = len(payload.split("|")) > 1
-        if is_valid_payload and payload[:2] != "0x":
-          print("Ethernet frame received: ", payload)
-          frame = EthernetFrame.loads(payload)
+        payload_sections = payload.split("|")
+        is_valid_payload = len(payload_sections) > 1
 
-          if frame.is_recipient(self.node_mac):
-            print("Intended recipient, retrieving data...")
-            print(f"Data: {frame.data}")
-          else:
-            print("Unintended recipient.")
+        # Format of paylaod
+        # dst_ip|src_ip|dst_mac|src_mac|len_data|<protocol_num>-<str_data>
+        frame_data = "|".join(payload_sections[2:])
+        src_ip = payload_sections[1]
 
+        print("\n")
+        print("full payload is " + payload)
+        print("source ip is " + src_ip)
+        print("frame data is " + frame_data)
+        print("\n")
+        
         # Handle and reply to ARP broadcast query here
-        elif payload[:10] == "Who has IP":
+        if payload[:10] == "Who has IP":
           print(payload)
 
+        # todo: check for IP header and drop if in firewall
+        elif is_valid_payload:
+          # Validation checks for ethernet frame data
+          if frame_data[:2] != "0x":
+            print("Ethernet frame received: ", frame_data)
+            frame = EthernetFrame.loads(frame_data)
+
+            if frame.is_recipient(self.node_mac):
+              print("Intended recipient, retrieving data...")
+              print(f"Data: {frame.data}")
+            else:
+              print("Unintended recipient.")
+          
         print_brk()
 
       except: # Remove this exception to see potential crashes here
