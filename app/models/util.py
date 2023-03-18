@@ -14,6 +14,7 @@ def print_node_help(has_top_break: bool = True):
   print("- eth \t\t Create an ethernet packet.")
   print("- ip \t\t Create an IP packet.")
   print("- reply \t Reply ARP broadcast query.")
+  print("- firewall \t Read or configure firewall options.")
   print("- whoami \t Bring up current ip and mac address.")
   print_brk()
 

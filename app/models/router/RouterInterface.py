@@ -125,8 +125,15 @@ class RouterInterface:
     if ip_packet.dest_ip_prefix() == self.router_int_ip_prefix:
       print("Broadcasting de-capsulated IP packets to connected nodes... [2/2]")
       dest_mac = self.arp_table.get_corresponding_mac(ip_packet.destination)
+
+      # Route IP header data to node for firewall to drop as well
+      ip_header = "|".join(ip_packet.dumps().split("|")[:2])
       ethernet_frame_payload: EthernetFrame = ip_packet.to_eth_frame(dest_mac, self.router_int_mac).dumps()
-      self.broadcast_ethernet_frame_data(ethernet_frame_payload)
+
+      # Format of ethernet_frame_with_header
+      # dst_ip|src_ip|dst_mac|src_mac|len_data|<protocol_num>-<str_data>
+      ethernet_frame_with_header = ip_header + "|" + ethernet_frame_payload
+      self.broadcast_ethernet_frame_data(ethernet_frame_with_header)
 
     else:
       print("Destination not in LAN.")
