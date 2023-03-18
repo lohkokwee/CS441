@@ -1,6 +1,18 @@
 import os
 from typing import Literal
 
+def encode_data(data: str) -> str:
+  '''
+    Returns encoded string in hexadecimal (string) format.
+  '''
+  return ':'.join(f"{ord(ch):02x}" for ch in data)
+
+def decode_data(data: str) -> str:
+  '''
+    Returns decoded hexadecimal (string) in readable (string) format.
+  '''
+  return ''.join([chr(int(ch, 16)) for ch in data.split(":")])
+
 def print_brk():
   print('-' * os.get_terminal_size().columns)
 
