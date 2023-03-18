@@ -9,7 +9,7 @@ class IPPacket:
 
   destination: str = None
   source: str = None
-  protocol: int = None
+  protocol: str = None
   data_length: int = None
   data: str = None
 
@@ -17,7 +17,7 @@ class IPPacket:
     self,
     dest_ip: str,
     src_ip: str,
-    protocol: int,
+    protocol: str,
     data: str
   ):
     self.destination = dest_ip
@@ -53,7 +53,7 @@ class IPPacket:
       Converts IP packet (layer 3) to ethernet frame (layer 2) for transmissions within the LAN.
       Destination and source mac are resolved with ARP tables.
     '''
-    data_with_protocol = f"{self.protocol}-{self.data}"
+    data_with_protocol = f"{self.destination}-{self.source}-{self.protocol}-{self.data}"
     return EthernetFrame(dest_mac, src_mac, data_with_protocol)
 
   @staticmethod

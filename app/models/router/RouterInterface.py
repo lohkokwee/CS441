@@ -190,8 +190,8 @@ class RouterInterface:
           return # End thread
 
         payload = data.decode("utf-8")
-        payload_sections = payload.split("|")
-        is_valid_payload = len(payload_sections) > 1
+        payload_segments = payload.split("|")
+        is_valid_payload = len(payload_segments) > 1
 
         if is_valid_payload:
           if payload[:2] != "0x":

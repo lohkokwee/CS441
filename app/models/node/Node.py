@@ -2,10 +2,12 @@ import os
 import socket
 import time
 import threading
+import traceback
 from models.payload.EthernetFrame import EthernetFrame
 from models.payload.IPPacket import IPPacket
 from models.arp.ARPTable import ARPTable
 from models.firewall.Firewall import Firewall
+from models.protocols.Ping import Ping
 from models.util import print_brk, print_node_help, print_command_not_found
 
 class Node:
@@ -18,6 +20,7 @@ class Node:
 
   arp_table = ARPTable()
   firewall = Firewall()
+  ping_protocol = Ping()
 
   def __init__(
     self,
@@ -77,6 +80,16 @@ class Node:
     print_brk()
     return
 
+  def handle_ethernet_frame(self, ethernet_frame: EthernetFrame, corresponding_socket: socket.socket) -> None:
+    if ethernet_frame.is_recipient(self.node_mac):
+      print("Intended recipient, retrieving data...")
+
+      if ethernet_frame.data.protocol and ethernet_frame.data.protocol[0] == "0":
+        self.ping_protocol.handle_ping(ethernet_frame, corresponding_socket)
+
+    else:
+      print("Unintended recipient.")
+
   def listen(self):
     while True:
       try:
@@ -101,7 +114,7 @@ class Node:
         print("source ip is " + src_ip)
         print("frame data is " + frame_data)
         print("\n")
-        
+
         # Handle and reply to ARP broadcast query here
         if payload[:10] == "Who has IP":
           print(payload)
@@ -110,20 +123,26 @@ class Node:
         elif is_valid_payload:
           # Validation checks for ethernet frame data
           if frame_data[:2] != "0x":
-            print("Ethernet frame received: ", frame_data)
-            frame = EthernetFrame.loads(frame_data)
-
-            if frame.is_recipient(self.node_mac):
-              print("Intended recipient, retrieving data...")
-              print(f"Data: {frame.data}")
-            else:
-              print("Unintended recipient.")
+            print("Ethernet frame received: ", payload)
+            ethernet_frame = EthernetFrame.loads(payload)
+            self.handle_ethernet_frame(ethernet_frame, self.router_int_socket)
           
         print_brk()
 
       except: # Remove this exception to see potential crashes here
+        traceback.print_exc()
         print("Node terminated.")
         return # Should only occur when handle_input receives "quit"
+
+  def send_ip_packet(self, ip_packet: IPPacket, corresponding_socket: socket.socket) -> None:
+    if ip_packet.protocol == "0":
+      print_brk()
+      self.ping_protocol.ping(ip_packet, corresponding_socket)
+    else:
+      self.router_int_socket.send(bytes(ip_packet.dumps(), "utf-8")) # Temporarily handle outgoing packets for other protocols
+      print("IP packet sent. [Completed]")
+      print_brk()
+
 
   def handle_input(self):
     while True:
@@ -143,10 +162,8 @@ class Node:
         print_brk()
 
       elif node_input == "ip":
-        payload = IPPacket.input_sequence(self.node_ip_address).dumps()
-        self.router_int_socket.send(bytes(payload, "utf-8"))
-        print("IP packet sent. [Completed]")
-        print_brk()
+        ip_packet = IPPacket.input_sequence(self.node_ip_address)
+        self.send_ip_packet(ip_packet, self.router_int_socket)
       
       elif node_input == "reply":
         print_brk()

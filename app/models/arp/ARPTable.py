@@ -36,9 +36,11 @@ class ARPTable:
     arp_record = self.arp_table[ip_address]
     return arp_record["corresponding_socket"]
   
-  def get_corresponding_mac(self, ip_address: str) -> str:
-    arp_record = self.arp_table[ip_address]
-    return arp_record["mac"]
+  def get_corresponding_mac(self, ip_address: str) -> Union[str, None]:
+    arp_record = self.arp_table.get(ip_address, None)
+    if arp_record:
+      return arp_record["mac"]
+    return None
   
   def get_all_sockets(self) -> List[socket.socket]:
     all_arp_records = self.arp_table.values()
