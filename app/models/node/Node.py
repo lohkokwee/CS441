@@ -19,6 +19,7 @@ class Node:
   router_int_socket = None
 
   arp_table = ARPTable()
+  # Can initialise firewall with pre-configured lists if needed
   firewall = Firewall()
   ping_protocol = Ping()
 
@@ -99,33 +100,29 @@ class Node:
           self.router_int_socket.close()
           os._exit(0)
         
-        # Format of payload = dst_mac|src_mac|len_data|str_data
+        # Format of paylaod
+        # dst_ip|src_ip|dst_mac|src_mac|len_data|<protocol_num>-<str_data>
         payload = data.decode("utf-8")
         payload_sections = payload.split("|")
         is_valid_payload = len(payload_sections) > 1
 
-        # Format of paylaod
-        # dst_ip|src_ip|dst_mac|src_mac|len_data|<protocol_num>-<str_data>
-        frame_data = "|".join(payload_sections[2:])
-        src_ip = payload_sections[1]
-
-        print("\n")
-        print("full payload is " + payload)
-        print("source ip is " + src_ip)
-        print("frame data is " + frame_data)
-        print("\n")
+        # Format of frame data = dst_mac|src_mac|len_data|<protocol_num>-<str_data>
+        frame_data = "|".join(payload_sections[2:]) if payload[:2] == "0x" else payload
+        src_ip = payload_sections[1] if payload[:2] == "0x" else ""
 
         # Handle and reply to ARP broadcast query here
         if payload[:10] == "Who has IP":
           print(payload)
 
-        # todo: check for IP header and drop if in firewall
-        elif is_valid_payload:
+        # Check for IP header and drop if in firewall
+        elif src_ip in self.firewall.get_blacklist():
+          print(f"Packet from {src_ip} filtered and dropped by firewall.")
+
+        elif is_valid_payload and frame_data[:2] != "0x":
           # Validation checks for ethernet frame data
-          if frame_data[:2] != "0x":
-            print("Ethernet frame received: ", payload)
-            ethernet_frame = EthernetFrame.loads(payload)
-            self.handle_ethernet_frame(ethernet_frame, self.router_int_socket)
+          print("Ethernet frame received: ", frame_data)
+          ethernet_frame = EthernetFrame.loads(frame_data)
+          self.handle_ethernet_frame(ethernet_frame, self.router_int_socket)
           
         print_brk()
 
@@ -171,6 +168,10 @@ class Node:
         self.router_int_socket.send(bytes(arp_response_payload, "utf-8"))
         print("ARP response sent.")
         print_brk()
+
+      # Handling input to update and view black or whitelists
+      elif node_input == "firewall":
+        self.firewall.handle_firewall_input()
 
       elif node_input == "whoami":
         print_brk()
