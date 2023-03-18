@@ -12,19 +12,40 @@ _(Note: while connecting the nodes/routers interfaces, please wait for a few sec
 
 1. Open five different terminals and run the commands below in their respective orders for each node. 
 ```
+
     python app/router_interface1.py
+
+    or 
+
+    py app/router_interface1.py
 ```
 ```
     python app/router_interface2.py
+
+    or
+
+    py app/router_interface2.py
 ```
 ```
     python app/node1.py
+
+    or
+
+    py app/node1.py
 ```
 ```
     python app/node2.py
+
+    or 
+
+    py app/node2.py
 ```
 ```
     python app/node3.py
+
+    or 
+
+    py app/node3.py
 ```
 
 2. You will notice an ARP routing table being built for the router interfaces in the respective terminals where the node is connecting to.
