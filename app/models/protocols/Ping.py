@@ -25,6 +25,9 @@ class Ping:
       print(f"Ping response data: {ethernet_data.data} [Success]")
       self.ping_received = True
 
+    elif (ethernet_data.protocol == "0r" and not self.ping_sent):
+      pass # Bug fix
+
     else:
       print("Ping request received, echoing data...")
       ip_packet: IPPacket = IPPacket(
