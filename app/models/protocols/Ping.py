@@ -26,7 +26,7 @@ class Ping:
       self.ping_received = True
 
     elif (ethernet_data.protocol == "0r" and not self.ping_sent):
-      pass # Bug fix
+      print(f"Invalid ping response received ({ethernet_data.data}) to uninitiated ping protocol.")
 
     else:
       print("Ping request received, echoing data...")
