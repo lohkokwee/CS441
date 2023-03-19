@@ -5,7 +5,7 @@ import threading
 from models.arp.ARPTable import ARPTable
 from models.payload.IPPacket import IPPacket
 from models.payload.EthernetFrame import EthernetFrame
-from models.util import print_brk, print_command_not_found, print_router_int_help
+from models.util import print_brk, print_command_not_found, print_router_int_help, clean_ethernet_payload, clean_ip_payload
 import traceback
 
 class RouterInterface:
@@ -192,10 +192,12 @@ class RouterInterface:
 
         if is_valid_payload:
           if payload[:2] != "0x":
+            # payload = clean_ethernet_payload(payload)
             ethernet_frame = EthernetFrame.loads(payload)
             self.handle_ethernet_frame(ethernet_frame, corresponding_socket)
             
           elif payload[:2] == "0x":
+            # payload = clean_ip_payload(payload)
             ip_packet = IPPacket.loads(payload)
             self.handle_ip_packet(ip_packet, corresponding_socket)
         
@@ -208,7 +210,7 @@ class RouterInterface:
         print(f"Closing corresponding connections... [1/2]")
         corresponding_socket.close()
         print(f"Unassigning IP address from ARP tables... [2/2]")
-        self.destroy_arp_connections(ip_address)
+        self.destroy_arp_connections(ip_address, mac_address)
         print(f"Connection to {mac_address} terminated. [Completed]")
         print_brk()
         return # End thread

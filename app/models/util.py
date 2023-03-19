@@ -30,6 +30,7 @@ def print_node_help(has_top_break: bool = True):
   print("- firewall \t Read or configure firewall options.")
   print("- kill \t\t Configure kill protocol options.")
   print("- sniff \t Configure sniffing functionality.")
+  print("- spoof \t Spoof your IP address.")
   print("- whoami \t Bring up current ip and mac address.")
   print_brk()
 
@@ -54,6 +55,38 @@ def print_command_not_found(device: Literal["node", "router_interface"]):
     print_node_help(has_top_break = False)
   elif device == "router_interface":
     print_router_int_help(has_top_break = False)
+
+def input_ip_sequence(prompt: str) -> str:
+    ip_to_add = input(prompt)
+    valid_input = True if ip_to_add[:2] == "0x" else False
+    while not valid_input:
+      ip_to_add = input("Invalid input, please enter a valid IP (e.g., 0x1A).\n> ")
+      valid_input = True if ip_to_add[:2] == "0x" else False
+    
+    return ip_to_add
+
+def clean_ethernet_payload(eth_payload: str) -> str:
+  '''
+    Clean payload for failure case e.g.,
+    - 0x1A spoof as 0x2A -> send ping to 0x2B
+    - Example of corrupted eth frame = N3|R2|X|dataN3|R2|X|dataN3|R2|X|data...
+  '''
+  eth_payload = "|".join(eth_payload.split("|")[:4])
+  if not eth_payload[-2:].isdigit():
+    eth_payload = eth_payload[:-2]
+  return eth_payload
+
+def clean_ip_payload(ip_payload: str) -> str:
+  '''
+    Clean payload for failure case e.g.,
+    - 0x1A spoof as 0x2A -> send ping to 0x2B
+    - Example of corrupted packet = 0x2A|0x2B|0r|4|test0x2A|0x2B|0r|4|test...
+  '''
+  ip_payload = "|".join(ip_payload.split("|")[:5])
+  if ip_payload[-4:-3] == "0x":
+    ip_payload = ip_payload[:-4]
+  return ip_payload
+
 
 if __name__ == "__main__":
   pass

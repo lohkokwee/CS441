@@ -1,5 +1,5 @@
 from typing import Dict, List
-from models.util import print_brk, print_command_not_found
+from models.util import print_brk, print_command_not_found, input_ip_sequence
 
 class Firewall:
   '''
@@ -74,15 +74,6 @@ class Firewall:
   def get_whitelist(self) -> List:
     return self.whitelist
   
-  def input_ip_sequence(self, prompt: str) -> str:
-    ip_to_add = input(prompt)
-    valid_input = True if ip_to_add[:2] == "0x" else False
-    while not valid_input:
-      ip_to_add = input("Invalid input, please enter a valid IP (e.g., 0x1A).\n> ")
-      valid_input = True if ip_to_add[:2] == "0x" else False
-    
-    return ip_to_add
-  
   def handle_firewall_input(self, has_top_break: bool = True):
     if has_top_break:
       print_brk()
@@ -105,11 +96,11 @@ class Firewall:
       print_brk()
 
     elif user_input == "b -a":
-      ip_to_add = self.input_ip_sequence("What is the value of the IP you wish to add to blacklist?\n> ")
+      ip_to_add = input_ip_sequence("What is the value of the IP you wish to add to blacklist?\n> ")
       self.add_to_blacklist(ip_to_add)
     
     elif user_input == "b -r":
-      ip_to_add = self.input_ip_sequence("What is the value of the IP you wish to remove from blacklist?\n> ")
+      ip_to_add = input_ip_sequence("What is the value of the IP you wish to remove from blacklist?\n> ")
       self.remove_from_blacklist(ip_to_add)
     
     elif user_input == "w":
@@ -117,11 +108,11 @@ class Firewall:
       print_brk()
 
     elif user_input == "w -a":
-      ip_to_add = self.input_ip_sequence("What is the value of the IP you wish to add to whitelist?\n> ")
+      ip_to_add = input_ip_sequence("What is the value of the IP you wish to add to whitelist?\n> ")
       self.add_to_whitelist(ip_to_add)
 
     elif user_input == "w -r":
-      ip_to_add = self.input_ip_sequence("What is the value of the IP you wish to remove from whitelist?\n> ")
+      ip_to_add = input_ip_sequence("What is the value of the IP you wish to remove from whitelist?\n> ")
       self.remove_from_whitelist(ip_to_add)
 
     elif user_input == "disable" or user_input == "d":

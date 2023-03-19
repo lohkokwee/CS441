@@ -11,7 +11,7 @@ from models.sniffing.Sniffer import Sniffer
 from models.protocols.Ping import Ping
 from models.protocols.Log import Log
 from models.protocols.Kill import Kill
-from models.util import print_brk, print_node_help, print_command_not_found
+from models.util import print_brk, print_node_help, print_command_not_found, input_ip_sequence, clean_ethernet_payload
 
 class Node:
   node_ip_address = None # Assigned by router  - See Router.receive_node_connection_data()
@@ -130,6 +130,7 @@ class Node:
           print(payload)
 
         if is_valid_payload: # Validation checks for ethernet frame data
+          # payload = clean_ethernet_payload(payload)
           print(f"Ethernet frame received: {payload}")
           ethernet_frame = EthernetFrame.loads(payload)
           src_ip = ethernet_frame.data.src_ip
@@ -203,6 +204,14 @@ class Node:
 
       elif node_input == "sniff":
         self.sniffer.handle_sniffer_input()
+
+      elif node_input == "spoof":
+        spoof_ip = input_ip_sequence("Enter the IP address you want to spoof.\n> ")
+        ip_packet = IPPacket.input_sequence(spoof_ip)
+        if ip_packet:
+          self.send_ip_packet(ip_packet, self.router_int_socket)
+        else:
+          print_command_not_found(device = "node")
 
       elif node_input == "whoami":
         print_brk()
