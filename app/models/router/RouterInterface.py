@@ -192,12 +192,12 @@ class RouterInterface:
 
         if is_valid_payload:
           if payload[:2] != "0x":
-            payload = clean_ethernet_payload(payload)
+            # payload = clean_ethernet_payload(payload)
             ethernet_frame = EthernetFrame.loads(payload)
             self.handle_ethernet_frame(ethernet_frame, corresponding_socket)
             
           elif payload[:2] == "0x":
-            payload = clean_ip_payload(payload)
+            # payload = clean_ip_payload(payload)
             ip_packet = IPPacket.loads(payload)
             self.handle_ip_packet(ip_packet, corresponding_socket)
         

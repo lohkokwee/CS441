@@ -130,7 +130,7 @@ class Node:
           print(payload)
 
         if is_valid_payload: # Validation checks for ethernet frame data
-          payload = clean_ethernet_payload(payload)
+          # payload = clean_ethernet_payload(payload)
           print(f"Ethernet frame received: {payload}")
           ethernet_frame = EthernetFrame.loads(payload)
           src_ip = ethernet_frame.data.src_ip
