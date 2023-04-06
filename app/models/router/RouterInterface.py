@@ -20,6 +20,7 @@ class RouterInterface:
   router_int_socket = None
 
   router_int_relay_addresses: list[tuple] = []
+  failed_router_relays: list[tuple] = []
 
   max_connections = 0
   arp_table = ARPTable()
@@ -373,6 +374,24 @@ class RouterInterface:
     if ip_address and mac_address:
       threading.Thread(target=self.listen, args=(corresponding_socket, ip_address, mac_address, )).start()
 
+  def reconnect(self):
+    if len(self.failed_router_relays) == 0:
+      print("No failed connections to reconnect to.")
+      return
+    for address_idx in range(len(self.failed_router_relays)):
+      address = self.failed_router_relays[address_idx]
+      corresponding_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      try:
+        corresponding_socket.connect(address)
+        self.handle_router_int_connection(corresponding_socket)
+        self.failed_router_relays.pop(address_idx)
+      except ConnectionRefusedError:
+        print(f"Unable to connect to the router interface with address: {address}.")
+    if len(self.failed_router_relays) != 0:
+      print('Enter "reconnect" to attempt to reconnect to failed connections after turning them on.')
+    else:
+      print("Successfully reconnected to all failed connections.")
+
   def handle_input(self):
     while True:
       router_int_input = input()
@@ -417,6 +436,11 @@ class RouterInterface:
         print("Displaying ARP tables with connected router interfaces (IP:MAC)...")
         self.router_int_arp_table.pprint()
         print_brk()
+
+      elif router_int_input == "reconnect":
+        print(f"Attempting to reconnect to the following router interfaces {self.failed_router_relays}...")
+        self.reconnect()
+        print_brk()
       
       else:
         print_command_not_found(device = "router_interface")
@@ -458,7 +482,6 @@ class RouterInterface:
     while True:
       corresponding_socket, corresponding_address = self.router_int_socket.accept()
       threading.Thread(target=self.handle_connection, args=(corresponding_socket, )).start()
-      
 
   def run(self):
     print_brk()
@@ -469,8 +492,14 @@ class RouterInterface:
       print_brk()
       for address in self.router_int_relay_addresses:
         corresponding_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        corresponding_socket.connect(address)
-        self.handle_router_int_connection(corresponding_socket)
+        try:
+          corresponding_socket.connect(address)
+          self.handle_router_int_connection(corresponding_socket)
+        except ConnectionRefusedError:
+          print(f"Unable to connect to the router interface with address: {address}.")
+          self.failed_router_relays.append(address)
+      if (len(self.failed_router_relays) != 0):
+        print('Enter "reconnect" to attempt to reconnect to failed connections after turning them on.')
   
     try:
       threading.Thread(target=self.receive_connections).start()

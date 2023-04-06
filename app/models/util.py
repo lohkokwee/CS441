@@ -41,6 +41,7 @@ def print_router_int_help(has_top_break: bool = True):
   print("Commands:")
   print("- (q)uit \t Terminate router interface.")
   print("- (h)elp \t Display command menu.")
+  print("- reconnect \t Attempt to reconnect to failed router interfaces during start up.")
   print("- arp \t\t Display all ARP tables.")
   print("- arp -n \t Display ARP tables with connected nodes.")
   print("- arp -r \t Display ARP tables with connected router interfaces.")
