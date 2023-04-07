@@ -23,7 +23,7 @@ class IPPacket:
     self.destination = dest_ip
     self.source = src_ip
     self.protocol = protocol
-    self.data_length = len(data)
+    self.data_length = len(data) if data else 0
     self.data = data
 
   def dumps(self) -> str:
@@ -47,6 +47,13 @@ class IPPacket:
 
   def dest_ip_prefix(self) -> str:
     return self.destination[:3]
+  
+  def is_broadcast_address(self) -> bool:
+    '''
+      Checks if packet meant to be broadcast.
+      E.g. 0x3F (3rd index from destination)
+    '''
+    return self.destination[3] == "F"
 
   def to_eth_frame(self, dest_mac: str, src_mac: str) -> EthernetFrame:
     '''
@@ -57,19 +64,15 @@ class IPPacket:
     return EthernetFrame(dest_mac, src_mac, data_with_headers)
 
   @staticmethod
-  def input_sequence(src_ip: str) -> IPPacket:
+  def input_sequence(src_ip: str, dest_ip:str) -> IPPacket:
     '''
       Initiates sequence to create IPPacket object.
     '''
     print_brk()
-    print("Create a IP packet by entering the following infomration into the console.")
-    dest_ip = input("Enter destination IP address... [1/3]\n> ")
-    while dest_ip[:2] != "0x":
-      dest_ip = input("Destination IP address invalid. Please enter destination IP address again... [1/3]\n> ")
-
-    protocol = input("Enter protocol... [2/3]\n- 0 \t Ping protocol\n- 1 \t Log protocol\n- 2 \t Kill protocol\n> ")
+    protocol = input("Enter protocol...\n- 0 \t Ping protocol\n- 1 \t Log protocol\n- 2 \t Kill protocol\n> ")
     while not (protocol.isdigit()) or not (int(protocol) in range(3)):
-      protocol = input("Invalid protocol, please enter protocol again... [2/3]\n- 0 \t Ping protocol\n- 1 \t Log protocol\n- 2 \t Kill protocol\n> ")
-
-    data = input("Enter payload... [3/3]\n> ")
+      protocol = input("Invalid protocol, please enter protocol again...\n- 0 \t Ping protocol\n- 1 \t Log protocol\n- 2 \t Kill protocol\n> ")
+    
+    print_brk()
+    data = input("Enter payload...\n> ")
     return IPPacket(dest_ip, src_ip, protocol, data)

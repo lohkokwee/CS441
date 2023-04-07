@@ -107,14 +107,21 @@ class RouterInterface:
     # corresponding_socket.send(bytes(f"Connection established with router interface with MAC of {self.router_int_mac} and IP address of {self.router_int_ip_address}.", "utf-8"))
     return assigned_ip_address, response_mac_address
 
-  def broadcast_ethernet_frame_data(self, payload: str):
+  def broadcast_ethernet_frame_data(self, ip_packet: IPPacket, dest_mac: str = None, is_broadcast_channel: bool = False):
     '''
       Emulates effect of ethernet broadcast of payload through socket unicast.
+      If is_broadcast_channel is True, every node of the broadcast is a destination.
     '''
     print("Broadcasting ethernet frame to connected MACs...")
-    connected_sockets = self.arp_table.get_all_sockets()
-    for connected_socket in connected_sockets:
-      connected_socket.send(bytes(payload, "utf-8"))
+    if dest_mac:
+      ethernet_frame_with_headers = ip_packet.to_eth_frame(dest_mac, self.router_int_mac).dumps()
+
+    arp_records = self.arp_table.get_all_arp_records()
+    for arp_record in arp_records:
+      if not dest_mac and is_broadcast_channel:
+        dest_mac = arp_record["mac"]
+      ethernet_frame_with_headers = ip_packet.to_eth_frame(dest_mac, self.router_int_mac).dumps()
+      arp_record["corresponding_socket"].send(bytes(ethernet_frame_with_headers, "utf-8"))
     print("Ethernet frame broadcasted.")
 
   def route_ip_packet_data(self, payload: str):
@@ -125,11 +132,11 @@ class RouterInterface:
     ip_packet: IPPacket = IPPacket.loads(payload)
     if ip_packet.dest_ip_prefix() == self.router_int_ip_prefix:
       print("Broadcasting de-capsulated IP packets to connected nodes... [2/2]")
-      dest_mac = self.arp_table.get_corresponding_mac(ip_packet.destination)
-
-      # Route IP header data to node for firewall to drop as well
-      ethernet_frame_with_headers: EthernetFrame = ip_packet.to_eth_frame(dest_mac, self.router_int_mac).dumps()
-      self.broadcast_ethernet_frame_data(ethernet_frame_with_headers)
+      dest_mac = None
+      is_broadcast_channel = ip_packet.is_broadcast_address()
+      if not is_broadcast_channel:
+        dest_mac = self.arp_table.get_corresponding_mac(ip_packet.destination)
+      self.broadcast_ethernet_frame_data(ip_packet, dest_mac, is_broadcast_channel)
 
     else:
       print("Destination not in LAN.")
@@ -170,7 +177,7 @@ class RouterInterface:
     self.route_ip_packet_data(payload)
 
 
-  def listen(self, corresponding_socket: socket.socket, ip_address: str, mac_address: str):
+  def listen(self, corresponding_socket: socket.socket, ip_address: str, mac_address: str, config_address: tuple = None):
     '''
       Listens to node and broadcasts packet to receipient.
     '''
@@ -180,6 +187,8 @@ class RouterInterface:
         if not data:
           print(f"Connection terminated from IP address of {ip_address} and MAC of {mac_address}.")
           print(f"Closing corresponding connections... [1/2]")
+          if config_address and config_address in self.router_int_relay_addresses:
+            self.failed_router_relays.append(config_address)
           corresponding_socket.close()
           print(f"Unassigning IP address from ARP tables... [2/2]")
           self.destroy_arp_connections(ip_address, mac_address)
@@ -192,6 +201,7 @@ class RouterInterface:
         is_valid_payload = len(payload_segments) > 1
 
         if is_valid_payload:
+          print("payload:", payload)
           if payload[:2] != "0x":
             # payload = clean_ethernet_payload(payload)
             ethernet_frame = EthernetFrame.loads(payload)
@@ -210,6 +220,8 @@ class RouterInterface:
         print(f"Connection terminated from IP address of {ip_address} and MAC of {mac_address}.")
         print(f"Closing corresponding connections... [1/2]")
         corresponding_socket.close()
+        if config_address and config_address in self.router_int_relay_addresses:
+          self.failed_router_relays.append(config_address)
         print(f"Unassigning IP address from ARP tables... [2/2]")
         self.destroy_arp_connections(ip_address, mac_address)
         print(f"Connection to {mac_address} terminated. [Completed]")
@@ -364,7 +376,7 @@ class RouterInterface:
     
     self.listen(corresponding_socket, ip_address, mac_address)
 
-  def handle_router_int_connection(self, corresponding_socket: socket.socket):
+  def handle_router_int_connection(self, corresponding_socket: socket.socket, config_address: tuple) -> None:
     '''
       Create connection with other router interfaces.
       1. Initiates connection for a router interface address.
@@ -372,7 +384,7 @@ class RouterInterface:
     '''
     ip_address, mac_address = self.router_int_connection_request(corresponding_socket)
     if ip_address and mac_address:
-      threading.Thread(target=self.listen, args=(corresponding_socket, ip_address, mac_address, )).start()
+      threading.Thread(target=self.listen, args=(corresponding_socket, ip_address, mac_address, config_address, )).start()
 
   def reconnect(self):
     if len(self.failed_router_relays) == 0:
@@ -383,7 +395,7 @@ class RouterInterface:
       corresponding_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
       try:
         corresponding_socket.connect(address)
-        self.handle_router_int_connection(corresponding_socket)
+        self.handle_router_int_connection(corresponding_socket, address)
         self.failed_router_relays.pop(address_idx)
       except ConnectionRefusedError:
         print(f"Unable to connect to the router interface with address: {address}.")
@@ -494,7 +506,7 @@ class RouterInterface:
         corresponding_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
           corresponding_socket.connect(address)
-          self.handle_router_int_connection(corresponding_socket)
+          self.handle_router_int_connection(corresponding_socket, address)
         except ConnectionRefusedError:
           print(f"Unable to connect to the router interface with address: {address}.")
           self.failed_router_relays.append(address)

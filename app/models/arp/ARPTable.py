@@ -1,15 +1,9 @@
 from typing import Dict, TypedDict, Union, List
 import socket
 import json
+from .ARPRecord import ARPRecord
 
 class ARPTable:
-  class ARPRecord(TypedDict):
-    '''
-      ARPRecord can have no socket connections if it resides in a node. Only sends layer 3 data to router interfaces.
-    '''
-    mac: str
-    corresponding_socket: Union[socket.socket, None] 
-
   arp_table: Dict[str, ARPRecord] = None
 
   def __init__(self):
@@ -48,10 +42,12 @@ class ARPTable:
     if arp_record:
       return arp_record["mac"]
     return None
+
+  def get_all_arp_records(self) -> List[ARPRecord]:
+    return self.arp_table.values()
   
   def get_all_sockets(self) -> List[socket.socket]:
-    all_arp_records = self.arp_table.values()
-    return list(map(lambda arp_record: arp_record["corresponding_socket"] , all_arp_records))
+    return list(map(lambda arp_record: arp_record["corresponding_socket"] , get_all_arp_records()))
 
   def to_dict(self) -> dict:
     return self.arp_table
