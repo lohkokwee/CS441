@@ -251,7 +251,7 @@ class Node:
           print_error(has_top_break=False)
           continue
 
-        ip_packet = IPPacket.input_sequence(self.node_ip_address, dest_ip_address)
+        ip_packet = IPPacket.input_sequence(self.node_ip_address, dest_ip)
         if ip_packet:
           self.send_ip_packet(ip_packet, self.router_int_socket)
         else:

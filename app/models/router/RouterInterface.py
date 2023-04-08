@@ -144,7 +144,7 @@ class RouterInterface:
 
   def handle_ethernet_frame(self, ethernet_frame: EthernetFrame, corresponding_socket: socket.socket) -> None:
     # Checks whether frame is query reply, if yes, update ARP table
-    if ethernet_frame.destination == self.router_int_mac and ethernet_frame.data == "arp_response":
+    if ethernet_frame.destination == self.router_int_mac and ethernet_frame.data.data == "arp_response":
       self.arp_response = True
       print(f"ARP response received, updating ARP table for {self.arp_last_broadcasted_ip}...")
 
@@ -161,7 +161,7 @@ class RouterInterface:
     else:
       payload = ethernet_frame.dumps()
       print("Ethernet frame received: ", payload)
-      self.broadcast_ethernet_frame_data(payload)
+      self.broadcast_ethernet_frame_data(ethernet_frame)
 
   def handle_ip_packet(self, ip_packet: IPPacket, corresponding_socket: socket.socket) -> None:
     payload = ip_packet.dumps()
@@ -459,9 +459,7 @@ class RouterInterface:
     # 0. Get user input on which IP to get
     target_ip = input("What is the IP address of the MAC you wish to get.\n> ")
     self.arp_last_broadcasted_ip = target_ip
-
-    print("Broadcasting ARP query to all in same LAN...")
-
+    print("Broadcasting ARP query to all nodes in the same LAN...")
     connected_sockets = self.arp_table.get_all_sockets()
     
     # Broadcast
