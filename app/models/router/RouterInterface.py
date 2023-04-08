@@ -9,10 +9,6 @@ from models.util import print_brk, print_command_not_found, print_router_int_hel
 import traceback
 
 class RouterInterface:
-  '''
-    Definitions:
-      - int: represents "interface"
-  '''
   router_int_address = None
   router_int_ip_address = None
   router_int_ip_prefix = None
@@ -104,24 +100,19 @@ class RouterInterface:
 
     print(f"Connection established. [Completed]")
     print_brk()
-    # corresponding_socket.send(bytes(f"Connection established with router interface with MAC of {self.router_int_mac} and IP address of {self.router_int_ip_address}.", "utf-8"))
     return assigned_ip_address, response_mac_address
 
-  def broadcast_ethernet_frame_data(self, ip_packet: IPPacket, dest_mac: str = None, is_broadcast_channel: bool = False):
+  def broadcast_ethernet_frame_data(self, ethernet_frame: EthernetFrame, is_broadcast_channel: bool = False):
     '''
       Emulates effect of ethernet broadcast of payload through socket unicast.
-      If is_broadcast_channel is True, every node of the broadcast is a destination.
+      If is_broadcast_channel is True, every node of the broadcast is a destination (allows decoding without sniffing).
     '''
     print("Broadcasting ethernet frame to connected MACs...")
-    if dest_mac:
-      ethernet_frame_with_headers = ip_packet.to_eth_frame(dest_mac, self.router_int_mac).dumps()
-
     arp_records = self.arp_table.get_all_arp_records()
     for arp_record in arp_records:
-      if not dest_mac and is_broadcast_channel:
-        dest_mac = arp_record["mac"]
-      ethernet_frame_with_headers = ip_packet.to_eth_frame(dest_mac, self.router_int_mac).dumps()
-      arp_record["corresponding_socket"].send(bytes(ethernet_frame_with_headers, "utf-8"))
+      if is_broadcast_channel:
+        ethernet_frame.destination = arp_record["mac"]
+      arp_record["corresponding_socket"].send(bytes(ethernet_frame.dumps(), "utf-8"))
     print("Ethernet frame broadcasted.")
 
   def route_ip_packet_data(self, payload: str):
@@ -136,7 +127,8 @@ class RouterInterface:
       is_broadcast_channel = ip_packet.is_broadcast_address()
       if not is_broadcast_channel:
         dest_mac = self.arp_table.get_corresponding_mac(ip_packet.destination)
-      self.broadcast_ethernet_frame_data(ip_packet, dest_mac, is_broadcast_channel)
+      ethernet_frame_with_headers: EthernetFrame = ip_packet.to_eth_frame(dest_mac, self.router_int_mac)
+      self.broadcast_ethernet_frame_data(ethernet_frame_with_headers, is_broadcast_channel)
 
     else:
       print("Destination not in LAN.")
@@ -400,7 +392,7 @@ class RouterInterface:
       except ConnectionRefusedError:
         print(f"Unable to connect to the router interface with address: {address}.")
     if len(self.failed_router_relays) != 0:
-      print('Enter "reconnect" to attempt to reconnect to failed connections after turning them on.')
+      print('Enter "reconnect" to attempt to reconnect to failed router interface connections after turning them on.')
     else:
       print("Successfully reconnected to all failed connections.")
 
@@ -511,7 +503,8 @@ class RouterInterface:
           print(f"Unable to connect to the router interface with address: {address}.")
           self.failed_router_relays.append(address)
       if (len(self.failed_router_relays) != 0):
-        print('Enter "reconnect" to attempt to reconnect to failed connections after turning them on.')
+        print('Enter "reconnect" to attempt to reconnect to failed router interface connections after turning them on.')
+        print_brk()
   
     try:
       threading.Thread(target=self.receive_connections).start()

@@ -11,7 +11,7 @@ from models.dns.DNSRecord import DNSRecord
 from models.constants import PROTOCOL
 from models.util import print_brk, print_dns_help, print_command_not_found, input_ip_sequence
 
-class DNS(Node):
+class DNSServer(Node):
   '''
     A DNS server implementation of a Node.
   '''

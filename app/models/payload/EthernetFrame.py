@@ -1,6 +1,7 @@
 from __future__ import annotations
 from models.payload.EthernetData import EthernetData
 from models.util import print_brk, encode_data, decode_data
+from models.constants import PROTOCOL
 
 class EthernetFrame:
   '''
@@ -50,7 +51,9 @@ class EthernetFrame:
     print("Create an ethernet frame by entering the following infomration into the console.")
     dest_mac = input("Enter destination MAC address... [1/2]\n> ")
     payload = input("Enter payload... [2/2]\n> ")
-    return EthernetFrame(dest_mac, src_mac, payload)
+    ethernet_frame = EthernetFrame(dest_mac, src_mac, payload)
+    ethernet_frame.data.protocol = PROTOCOL["ETH"]
+    return ethernet_frame
 
   @staticmethod
   def arp_reply_sequence(dst_mac: str, src_mac: str) -> EthernetFrame:

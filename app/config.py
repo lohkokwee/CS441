@@ -66,3 +66,19 @@ DNS_SERVER_CONFIG = {
     }
   ]
 }
+
+ROUTER_INT4_CONFIG = {
+  # "router_int_ip_address": "0x31",
+  # "router_int_mac": "R3",
+  # "router_int_port": ROUTER_INT3_PORT,
+  # "max_connections": 5,
+  # "router_int_relay_addresses": [(LOCALHOST, ROUTER_INT1_PORT), (LOCALHOST, ROUTER_INT2_PORT)],
+}
+
+VPN_SERVER_CONFIG = {
+  # Essentially connecting to R4
+}
+
+PROTECTED_SERVER_CONFIG = {
+  # Essentially a node
+}

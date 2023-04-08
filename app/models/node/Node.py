@@ -112,6 +112,9 @@ class Node:
       elif ethernet_frame.data.protocol and ethernet_frame.data.protocol[0] == PROTOCOL["DNS_QUERY"]:
         self.handle_dns_response(ethernet_frame)
 
+      elif ethernet_frame.data.protocol and ethernet_frame.data.protocol == PROTOCOL["ETH"]:
+        print(f"Ethernet frame data: {ethernet_frame.data.data}")
+
     elif self.sniffer.is_sniffing:
       print("Sniffing enabled...")
       print(f"Ethernet frame data: {ethernet_frame.data.data}")
