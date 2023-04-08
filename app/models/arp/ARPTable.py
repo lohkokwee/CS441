@@ -47,7 +47,7 @@ class ARPTable:
     return self.arp_table.values()
   
   def get_all_sockets(self) -> List[socket.socket]:
-    return list(map(lambda arp_record: arp_record["corresponding_socket"] , get_all_arp_records()))
+    return list(map(lambda arp_record: arp_record["corresponding_socket"] , self.get_all_arp_records()))
 
   def to_dict(self) -> dict:
     return self.arp_table
