@@ -246,8 +246,8 @@ class Node:
 
       elif node_input == "ip":
         print("Create a IP packet by entering the following infomration into the console.")
-        dest_ip_address = self.get_input_address()
-        if not dest_ip_address:
+        dest_ip = self.get_input_address()
+        if not dest_ip:
           print_error(has_top_break=False)
           continue
 
@@ -286,7 +286,14 @@ class Node:
 
       elif node_input == "spoof":
         spoof_ip = input_ip_sequence("Enter the IP address you want to spoof.\n> ")
-        ip_packet = IPPacket.input_sequence(spoof_ip)
+        print_brk()
+
+        dest_ip = self.get_input_address()
+        if not dest_ip:
+          print_error(has_top_break=False)
+          continue
+
+        ip_packet = IPPacket.input_sequence(spoof_ip, dest_ip)
         if ip_packet:
           self.send_ip_packet(ip_packet, self.router_int_socket)
         else:
