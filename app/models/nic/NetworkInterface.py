@@ -178,20 +178,22 @@ class NetworkInterface:
 
     if ip_packet.destination == self.network_int_ip_address:
       print(f"Intended recipient...")
-      print(ip_packet.dumps())
 
       if ip_packet.protocol == PROTOCOL["ROUTE_ADD"]:
         print("New route received.")
         print(f"Adding new route to routing table... [1/2]")
-        update_prefix, cost, exclusion_ips = ip_packet.get_routing_data()
+        update_prefix, cost, exclusion_ips = ip_packet.get_route_add_data()
         self.routing_table.extend_entry(ip_packet.source[:3], update_prefix, int(cost))
         print("Broadcasting path to neighbouring interfaces... [2/2]")
         self.broadcast_route_add(update_prefix, int(cost), exclusion_ips)
         print("Routing table updated. [Success]")
       
       elif ip_packet.protocol == PROTOCOL["ROUTE_REMOVE"]:
-        print(f"Removing route from routing table...")
-        self.routing_table.remove_from_entry(ethernet_frame.data.src_ip[:3], ethernet_frame.data.data)
+        print(f"Removing new route to routing table... [1/2]")
+        update_prefix, exclusion_ips = ip_packet.get_route_remove_data()
+        self.routing_table.remove_entire_entry(update_prefix)
+        print("Broadcasting removal to neighbouring interfaces... [2/2]")
+        self.broadcast_route_remove(update_prefix, exclusion_ips)
         print("Routing table updated. [Success]")
 
     else:
@@ -215,6 +217,7 @@ class NetworkInterface:
           self.destroy_arp_connections(ip_address, mac_address)
           if (ip_address[:3] != self.network_int_ip_prefix):
             self.routing_table.remove_entire_entry(ip_address[:3])
+            self.broadcast_route_remove(ip_address[:3], [])
           print(f"Connection to {mac_address} terminated. [Completed]")
           print_brk()
           return # End thread
@@ -224,7 +227,6 @@ class NetworkInterface:
         is_valid_payload = len(payload_segments) > 1
 
         if is_valid_payload:
-          print("payload:", payload)
           if payload[:2] != "0x":
             # payload = clean_ethernet_payload(payload)
             ethernet_frame = EthernetFrame.loads(payload)
@@ -249,6 +251,7 @@ class NetworkInterface:
         self.destroy_arp_connections(ip_address, mac_address)
         if (ip_address[:3] != self.network_int_ip_prefix):
           self.routing_table.remove_entire_entry(ip_address[:3])
+          self.broadcast_route_remove(ip_address[:3], [])
         print(f"Connection to {mac_address} terminated. [Completed]")
         print_brk()
         return # End thread
@@ -285,7 +288,7 @@ class NetworkInterface:
     print(f"Connection interaface's IP address of {ip_received} and MAC of {mac_received} received.")
     return ip_received, mac_received, routing_table_dump
   
-  def network_int_connection_request(self, corresponding_socket: socket.socket) -> tuple[str, str]:
+  def network_int_connection_request(self, corresponding_socket: socket.socket, is_reconnection: bool = False) -> tuple[str, str]:
     '''
       Establishes arp tables for socket and mac for network interface that is connecting to another network interface.
       1. Request for target network interface's IP address.
@@ -308,6 +311,7 @@ class NetworkInterface:
         if corresponding_ip_address:
           self.destroy_arp_connections(corresponding_ip_address)
           self.routing_table.remove_entire_entry(corresponding_ip_address[:3])
+          self.broadcast_route_remove(ip_address[:3], [])
         print(f"Connection terminated. [Completed]")
         print_brk()
         return corresponding_ip_address, corresponding_mac_address # End thread
@@ -319,7 +323,7 @@ class NetworkInterface:
 
       elif (message == "request_network_int_connecting_data"):
         print(f"Providing connecting data... [2/3]")
-        data_provided = self.provide_network_int_connecting_data(corresponding_socket)
+        data_provided = self.provide_network_int_connecting_data(corresponding_socket, is_reconnection)
     
     print(f"Updating ARP and routing tables... [3/3]")
     self.network_int_arp_table.update_arp_table(corresponding_ip_address, corresponding_mac_address, corresponding_socket)
@@ -338,8 +342,13 @@ class NetworkInterface:
     print(f"Connecting interface's IP address of {data[0]} and MAC of {data[1]} received.")
     return data
   
-  def provide_network_int_connecting_data(self, corresponding_socket: socket.socket):
+  def provide_network_int_connecting_data(self, corresponding_socket: socket.socket, is_reconnection: bool = False):
+    '''
+      If network interface is reconnecting, we need to provide existing routing tables.
+    '''
     data = f"{self.network_int_ip_address}|{self.network_int_mac}"
+    if is_reconnection:
+      data += f"|{self.routing_table.dumps()}"
     corresponding_socket.send(bytes(f"{data}" ,"utf-8"))
     time.sleep(1)
     corresponding_socket.send(bytes(f"provide_network_int_connecting_data_completed" ,"utf-8"))
@@ -350,7 +359,7 @@ class NetworkInterface:
   def broadcast_route_add(self, prefix_to_add: str, cost: int = 0, exclusion_ips: list[str] = []):
     '''
       Broadcast message to add IP routes to routing table.
-      Include who broadcasting to to prevent repeated broadcasts.
+      exclusion_ips prevent repeated broadcasts.
     '''
     ip_addresses = self.network_int_arp_table.get_all_ip_addresses()
     broadcast_ips = list(filter(lambda ip_address: (not ip_address in exclusion_ips) and prefix_to_add != ip_address[:3], ip_addresses))
@@ -361,9 +370,26 @@ class NetworkInterface:
     exclusion_ips_payload = f"{'/'.join(exclusion_ips)}"
 
     for ip_address in broadcast_ips:
-      print(f"Sending to {ip_address}")
       payload = f"{prefix_to_add}:{cost + 1}:{exclusion_ips_payload}"
       ip_packet = IPPacket(ip_address, self.network_int_ip_address, PROTOCOL["ROUTE_ADD"], payload)
+      self.network_int_arp_table.get_corresponding_socket(ip_address).send(bytes(ip_packet.dumps(),"utf-8"))
+
+  def broadcast_route_remove(self, prefix_to_remove: str, exclusion_ips: list[str] = []):
+    '''
+      Broadcast message to remove IP routes to routing table.
+      exclusion_ips prevent repeated broadcasts.
+    '''
+    ip_addresses = self.network_int_arp_table.get_all_ip_addresses()
+    broadcast_ips = list(filter(lambda ip_address: (not ip_address in exclusion_ips) and prefix_to_remove != ip_address[:3], ip_addresses))
+    exclusion_ips.extend(broadcast_ips)
+
+    if not (self.network_int_ip_address in exclusion_ips):
+      exclusion_ips.append(self.network_int_ip_address)
+    exclusion_ips_payload = f"{'/'.join(exclusion_ips)}"
+
+    for ip_address in broadcast_ips:
+      payload = f"{prefix_to_remove}:{exclusion_ips_payload}"
+      ip_packet = IPPacket(ip_address, self.network_int_ip_address, PROTOCOL["ROUTE_REMOVE"], payload)
       self.network_int_arp_table.get_corresponding_socket(ip_address).send(bytes(ip_packet.dumps(),"utf-8"))
 
   def network_int_connection_response(self, corresponding_socket: socket.socket) -> tuple[str, str]:
@@ -377,14 +403,19 @@ class NetworkInterface:
     self.provide_network_int_connection_data(corresponding_socket)
 
     print(f"Requesting connecting interface's IP address and MAC... [2/4]")
-    connecting_ip_address, connecting_mac = self.request_network_int_connecting_data(corresponding_socket)
+    data = self.request_network_int_connecting_data(corresponding_socket)
+    if len(data) > 2: # This is a reconnection request
+      connecting_ip_address, connecting_mac, routing_table_dump = data
+      self.routing_table.loads(self.network_int_ip_prefix, connecting_ip_address[:3], routing_table_dump)
+    else:
+      connecting_ip_address, connecting_mac = data
+      self.routing_table.create_entry(connecting_ip_address[:3])
 
     print(f"Broadcasting new routes to connected interfaces... [3/4]")
     self.broadcast_route_add(connecting_ip_address[:3], cost=0, exclusion_ips=[])
 
     print(f"Updating ARP and routing tables... [4/4]")
     self.network_int_arp_table.update_arp_table(connecting_ip_address, connecting_mac, corresponding_socket)
-    self.routing_table.create_entry(connecting_ip_address[:3])
 
     print(f"Connection established. [Completed]")
     print_brk()
@@ -409,6 +440,7 @@ class NetworkInterface:
           if ip_address:
             self.destroy_arp_connections(ip_address)
             self.routing_table.remove_entire_entry(ip_address[:3])
+            self.broadcast_route_remove(ip_address[:3], [])
           print(f"Connection terminated. [Completed]")
           print_brk()
           return # End thread
@@ -427,13 +459,13 @@ class NetworkInterface:
     
     self.listen(corresponding_socket, ip_address, mac_address)
 
-  def handle_network_int_connection(self, corresponding_socket: socket.socket, config_address: tuple) -> None:
+  def handle_network_int_connection(self, corresponding_socket: socket.socket, config_address: tuple, is_reconnection: bool = False) -> None:
     '''
       Create connection with other network interfaces.
       1. Initiates connection for a network interface address.
       2. Start a thread listen to the new connection if identifying connection established.
     '''
-    ip_address, mac_address = self.network_int_connection_request(corresponding_socket)
+    ip_address, mac_address = self.network_int_connection_request(corresponding_socket, is_reconnection)
     if ip_address and mac_address:
       threading.Thread(target=self.listen, args=(corresponding_socket, ip_address, mac_address, config_address, )).start()
 
@@ -445,7 +477,7 @@ class NetworkInterface:
       corresponding_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
       try:
         corresponding_socket.connect(address)
-        self.handle_network_int_connection(corresponding_socket, address)
+        self.handle_network_int_connection(corresponding_socket, address, is_reconnection=True)
         self.failed_network_relays.remove(address)
       except ConnectionRefusedError:
         print(f"Unable to connect to the network interface with address: {address}.")
