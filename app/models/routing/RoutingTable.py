@@ -20,6 +20,7 @@ class RoutingTable:
     '''
       Loads routing table from a routing_table_dump.
     '''
+    print(f"---> Loading dumps: {routing_table_dump}")
     if not network_interface_prefix in self.routing_table:
       self.routing_table[network_interface_prefix] = []
 
@@ -33,17 +34,25 @@ class RoutingTable:
     '''
       Dumps entire routing table as a single string.
     '''
+    
     dump = set()
     for prefix in self.routing_table:
       dump.add(f"{prefix},1")
       for inner_prefix, cost in self.routing_table[prefix]:
         if not inner_prefix in self.routing_table: # Add only if don't have a shorter path
           dump.add(f"{inner_prefix},{int(cost) + 1}")
+    print(f"---> Routing table dumps: {dump}")
     return ":".join(list(dump))
 
   
-  def remove_entire_entry(self, network_interface_prefix: str) -> None:
-    self.routing_table.pop(network_interface_prefix)
+  def remove_entire_entry(self, prefix_to_remove: str) -> None:
+    self.routing_table.pop(prefix_to_remove, None)
+    for neighbour in self.routing_table.keys():
+      routes = self.routing_table[neighbour]
+      for route in routes:
+        prefix, cost = route
+        if prefix == prefix_to_remove:
+          self.routing_table[neighbour].remove(route)
   
   def remove_from_entry(self, network_interface_prefix: str, prefix_to_remove: str) -> None:
     for entry in self.routing_table[network_interface_prefix]:
@@ -51,7 +60,6 @@ class RoutingTable:
       if prefix == prefix_to_remove:
         self.routing_table[network_interface_prefix].remove(entry)
         break
-    
 
   def get_route():
     pass
