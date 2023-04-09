@@ -224,7 +224,6 @@ class NetworkInterface:
         is_valid_payload = len(payload_segments) > 1
 
         if is_valid_payload:
-          print("payload:", payload)
           if payload[:2] != "0x":
             # payload = clean_ethernet_payload(payload)
             ethernet_frame = EthernetFrame.loads(payload)
