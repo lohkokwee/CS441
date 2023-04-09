@@ -361,7 +361,6 @@ class NetworkInterface:
     exclusion_ips_payload = f"{'/'.join(exclusion_ips)}"
 
     for ip_address in broadcast_ips:
-      print(f"Sending to {ip_address}")
       payload = f"{prefix_to_add}:{cost + 1}:{exclusion_ips_payload}"
       ip_packet = IPPacket(ip_address, self.network_int_ip_address, PROTOCOL["ROUTE_ADD"], payload)
       self.network_int_arp_table.get_corresponding_socket(ip_address).send(bytes(ip_packet.dumps(),"utf-8"))
