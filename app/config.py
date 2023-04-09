@@ -47,7 +47,21 @@ NODE3_CONFIG = {
   "node_mac": "N3",
   "network_int_mac": "R2", 
   "network_int_port": ROUTER_INT2_PORT,
-  "dns_server_prefix": DNS_SERVER_PREFIX
+  "dns_server_prefix": DNS_SERVER_PREFIX,
+  "malicious_dns_records": [
+    {
+      "domain_name": "N1.com",
+      "ip_address": "0x2B"
+    },
+    {
+      "domain_name": "abc.com",
+      "ip_address": "0x2B"
+    },
+    {
+      "domain_name": "def.com",
+      "ip_address": "0x2B"
+    }
+  ]
 }
 
 ROUTER_INT3_CONFIG = {
