@@ -14,16 +14,18 @@ from models.util import print_brk, print_dns_help, print_command_not_found, inpu
 class DNSServer(Node):
   '''
     A DNS server implementation of a Node.
+    Stores and resolves DNS records.
   '''
   def __init__(
     self,
+    device_name: str,
     node_mac: str,
-    router_int_mac: str,
-    router_int_port: int,
-    router_int_host: str = "localhost",
+    network_int_mac: str,
+    network_int_port: int,
+    network_int_host: str = "localhost",
     dns_records: List = None
   ):
-    super().__init__(node_mac, router_int_mac, router_int_port, router_int_host, dns_records=dns_records)
+    super().__init__(device_name, node_mac, network_int_mac, network_int_port, network_int_host, dns_records=dns_records)
 
   def dns_response(self, ethernet_frame: EthernetFrame, corresponding_socket: socket.socket):
     print("Preparing DNS response...")
@@ -59,8 +61,8 @@ class DNSServer(Node):
     while True:
       node_input = input()
       if node_input == "quit" or node_input == "q":
-        print("Terminating DNS server node and connection with router interface...")
-        self.router_int_socket.close()
+        print(f"Terminating {self.device_name} and connection with router interface...")
+        self.network_int_socket.close()
         os._exit(0)
 
       elif node_input == "help" or node_input == "h":
@@ -78,8 +80,8 @@ class DNSServer(Node):
     
       elif node_input == "whoami":
         print_brk()
-        print(f"DNS server node's IP address is {self.node_ip_address}")
-        print(f"DNS server node's MAC address is {self.node_mac}")
+        print(f"{self.device_name}'s IP address is {self.node_ip_address}")
+        print(f"{self.device_name}'s MAC address is {self.node_mac}")
         print_brk()
 
       else:
@@ -87,8 +89,8 @@ class DNSServer(Node):
 
   def run(self) -> None: 
     print_brk()
-    print(f"DNS server node connecting to router interface with mac {self.node_mac}...")
-    self.router_int_socket.connect(self.router_int_address)
+    print(f"{self.device_name} connecting to network interface with mac {self.node_mac}...")
+    self.network_int_socket.connect(self.network_int_address)
     self.node_connection_request()
     try:
       threading.Thread(target = self.listen).start()
@@ -96,4 +98,4 @@ class DNSServer(Node):
       self.handle_input()
 
     except KeyboardInterrupt:
-      self.router_int_socket.close()
+      self.network_int_socket.close()

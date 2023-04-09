@@ -9,9 +9,6 @@ class ARPTable:
   def __init__(self):
     self.arp_table = {}
 
-  def __str__(self):
-    return 
-
   def update_arp_table(self, ip_address: str, mac_address: str, corresponding_socket: Union[socket.socket, None] = None) -> None:
     self.arp_table[ip_address] = {
       "mac": mac_address,
@@ -42,6 +39,9 @@ class ARPTable:
     if arp_record:
       return arp_record["mac"]
     return None
+
+  def get_all_ip_addresses(self) -> List[str]:
+    return list(self.arp_table.keys())
 
   def get_all_arp_records(self) -> List[ARPRecord]:
     return self.arp_table.values()

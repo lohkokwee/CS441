@@ -17,14 +17,16 @@ from models.protocols.Log import Log
 from models.protocols.Kill import Kill
 from models.constants import PROTOCOL
 from models.util import print_brk, print_node_help, print_command_not_found, print_error, input_ip_sequence, is_valid_domain_name
+from config import HOST
 
 class Node:
-  node_ip_address = None # Assigned by router  - See Router.receive_node_connection_data()
+  device_name = None
+  node_ip_address = None # Assigned by router  - See NetworkInterface.receive_node_connection_data()
   node_mac = None
 
-  router_int_address = None
-  router_int_mac = None
-  router_int_socket = None
+  network_int_address = None
+  network_int_mac = None
+  network_int_socket = None
 
   arp_table = ARPTable()
   dns_table = None
@@ -36,63 +38,65 @@ class Node:
 
   def __init__(
     self,
+    device_name: str,
     node_mac: str,
-    router_int_mac: str,
-    router_int_port: int,
-    router_int_host: str = "localhost",
+    network_int_mac: str,
+    network_int_port: int,
+    network_int_host: str = HOST,
     dns_server_prefix: str = None,
     dns_records: List = None
   ):
+    self.device_name = device_name
     self.node_mac = node_mac
-    self.router_int_address = (router_int_host, router_int_port)
-    self.router_int_mac = router_int_mac
-    self.router_int_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    self.network_int_address = (network_int_host, network_int_port)
+    self.network_int_mac = network_int_mac
+    self.network_int_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     self.dns_table = DNSTable(dns_records)
     self.dns_server_prefix = dns_server_prefix
 
   def receive_node_connection_data(self):
     print("Awaiting node connection data... [1/3]")
     assigned_ip_address = None
-    router_int_mac = None
+    network_int_mac = None
 
     while True:
-      data = self.router_int_socket.recv(1024).decode('utf-8')
+      data = self.network_int_socket.recv(1024).decode('utf-8')
       if data == "provide_node_connection_data_completed":
         break
       
       data = data.split("|")
       if (len(data) > 1): 
-        assigned_ip_address, router_int_mac = data
+        assigned_ip_address, network_int_mac = data
     
     print(f"IP address {assigned_ip_address} assigned.")
     print(f"Updating ARP tables... [2/3]")
-    self.arp_table.update_arp_table(assigned_ip_address, router_int_mac, self.router_int_socket)
+    self.arp_table.update_arp_table(assigned_ip_address, network_int_mac, self.network_int_socket)
     self.node_ip_address = assigned_ip_address
-    return self.node_ip_address, router_int_mac
+    return self.node_ip_address, network_int_mac
 
   def response_mac_address(self):
     print("Sending MAC... [3/3]")
-    self.router_int_socket.send(bytes(f"{self.node_mac}" ,"utf-8"))
+    self.network_int_socket.send(bytes(f"{self.node_mac}" ,"utf-8"))
     time.sleep(1)
-    self.router_int_socket.send(bytes(f"request_mac_address_completed" ,"utf-8"))
-    print(f"Node MAC {self.node_mac} sent.")
+    self.network_int_socket.send(bytes(f"request_mac_address_completed" ,"utf-8"))
+    print(f"{self.device_name} MAC {self.node_mac} sent.")
     return True
 
   def node_connection_request(self):
-    self.router_int_socket.send(bytes("node_connection_request", "utf-8"))
+    self.network_int_socket.send(bytes("node_connection_request", "utf-8"))
     ip_assigned = False
     mac_provided = False
 
     while not ip_assigned or not mac_provided:
-      message = self.router_int_socket.recv(1024).decode('utf-8')
+      message = self.network_int_socket.recv(1024).decode('utf-8')
       if (message == "provide_node_connection_data"):
         ip_assigned, _ = self.receive_node_connection_data()
 
       elif (message == "request_mac_address"):
         mac_provided = self.response_mac_address()
 
-    print(f"Connection established with router interface with MAC of {self.router_int_mac}.")
-    print("Node connection request completed. [Completed]")
+    print(f"Connection established with router's network interface with MAC of {self.network_int_mac}.")
+    print(f"{self.device_name} connection request completed. [Completed]")
     print_brk()
     return
 
@@ -112,7 +116,7 @@ class Node:
       elif ethernet_frame.data.protocol and ethernet_frame.data.protocol[0] == PROTOCOL["DNS_QUERY"]:
         self.handle_dns_response(ethernet_frame)
 
-      elif ethernet_frame.data.protocol and ethernet_frame.data.protocol == PROTOCOL["ETH"]:
+      elif ethernet_frame.data.protocol and ethernet_frame.data.protocol[0] == PROTOCOL["ETH"]:
         print(f"Ethernet frame data: {ethernet_frame.data.data}")
 
     elif self.sniffer.is_sniffing:
@@ -125,10 +129,10 @@ class Node:
   def listen(self):
     while True:
       try:
-        data = self.router_int_socket.recv(1024)
-        if not data: # When connection ends from router
-          print("Connection from router interface terminated. Node terminated.")
-          self.router_int_socket.close()
+        data = self.network_int_socket.recv(1024)
+        if not data: # When connection ends from network interface
+          print("Connection from router's network interface terminated. {self.device_name} terminated.")
+          self.network_int_socket.close()
           os._exit(0)
         
         '''
@@ -156,19 +160,19 @@ class Node:
             print(f"Packet from {src_ip} filtered and dropped by firewall.")
           
           else:
-            self.handle_ethernet_frame(ethernet_frame, self.router_int_socket)
+            self.handle_ethernet_frame(ethernet_frame, self.network_int_socket)
           
         print_brk()
 
       except: # Remove this exception to see potential crashes here
         traceback.print_exc()
-        print("Node terminated.")
+        print("{self.device_name} terminated.")
         return # Should only occur when handle_input receives "quit"
 
   def send_dns_query(self, address: str) -> str:
     print("Sending DNS query...")
     ip_packet = IPPacket(self.dns_server_prefix + "F", self.node_ip_address, PROTOCOL["DNS_QUERY"], address)
-    self.send_ip_packet(ip_packet, self.router_int_socket)
+    self.send_ip_packet(ip_packet, self.network_int_socket)
     print(f"DNS query sent to DNS server at prefix {self.dns_server_prefix}.")
 
   
@@ -222,7 +226,7 @@ class Node:
       self.ping_protocol.ping(ip_packet, corresponding_socket)
 
     else:
-      self.router_int_socket.send(bytes(ip_packet.dumps(), "utf-8")) # Temporarily handle outgoing packets for other protocols
+      self.network_int_socket.send(bytes(ip_packet.dumps(), "utf-8")) # Temporarily handle outgoing packets for other protocols
       print("IP packet sent. [Completed]")
       if has_bottom_break: print_brk()
 
@@ -232,7 +236,7 @@ class Node:
       node_input = input()
       if node_input == "quit" or node_input == "q":
         print("Terminating node and connection with router interface...")
-        self.router_int_socket.close()
+        self.network_int_socket.close()
         os._exit(0)
 
       elif node_input == "help" or node_input == "h":
@@ -240,7 +244,7 @@ class Node:
 
       elif node_input == "eth":
         payload = EthernetFrame.input_sequence(self.node_mac).dumps()
-        self.router_int_socket.send(bytes(payload, "utf-8"))
+        self.network_int_socket.send(bytes(payload, "utf-8"))
         print("Ethernet frame sent. [Completed]")
         print_brk()
 
@@ -253,7 +257,7 @@ class Node:
 
         ip_packet = IPPacket.input_sequence(self.node_ip_address, dest_ip)
         if ip_packet:
-          self.send_ip_packet(ip_packet, self.router_int_socket)
+          self.send_ip_packet(ip_packet, self.network_int_socket)
         else:
           print_error()
 
@@ -269,8 +273,8 @@ class Node:
       
       elif node_input == "reply":
         print_brk()
-        arp_response_payload = EthernetFrame.arp_reply_sequence(self.router_int_mac, self.node_mac).dumps()
-        self.router_int_socket.send(bytes(arp_response_payload, "utf-8"))
+        arp_response_payload = EthernetFrame.arp_reply_sequence(self.network_int_mac, self.node_mac).dumps()
+        self.network_int_socket.send(bytes(arp_response_payload, "utf-8"))
         print("ARP response sent.")
         print_brk()
 
@@ -295,14 +299,14 @@ class Node:
 
         ip_packet = IPPacket.input_sequence(spoof_ip, dest_ip)
         if ip_packet:
-          self.send_ip_packet(ip_packet, self.router_int_socket)
+          self.send_ip_packet(ip_packet, self.network_int_socket)
         else:
           print_command_not_found(device = "node")
 
       elif node_input == "whoami":
         print_brk()
-        print(f"Node's IP address is {self.node_ip_address}")
-        print(f"Node's MAC address is {self.node_mac}")
+        print(f"{self.device_name}'s IP address is {self.node_ip_address}")
+        print(f"{self.device_name}'s MAC address is {self.node_mac}")
         print_brk()
 
       else:
@@ -310,8 +314,8 @@ class Node:
 
   def run(self) -> None: 
     print_brk()
-    print(f"Node connecting to router interface with mac {self.node_mac}...")
-    self.router_int_socket.connect(self.router_int_address)
+    print(f"{self.device_name} connecting to router's network interface with mac {self.node_mac}...")
+    self.network_int_socket.connect(self.network_int_address)
     self.node_connection_request()
     try:
       threading.Thread(target = self.listen).start()
@@ -319,4 +323,4 @@ class Node:
       self.handle_input()
 
     except KeyboardInterrupt:
-      self.router_int_socket.close()
+      self.network_int_socket.close()
