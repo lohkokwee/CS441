@@ -131,7 +131,7 @@ class Node:
       try:
         data = self.network_int_socket.recv(1024)
         if not data: # When connection ends from network interface
-          print("Connection from router's network interface terminated. {self.device_name} terminated.")
+          print(f"Connection from router's network interface terminated. {self.device_name} terminated.")
           self.network_int_socket.close()
           os._exit(0)
         
@@ -156,7 +156,7 @@ class Node:
           ethernet_frame = EthernetFrame.loads(payload)
           src_ip = ethernet_frame.data.src_ip
 
-          if src_ip in self.firewall.get_blacklist() and not self.firewall.is_disabled():
+          if not self.firewall.is_disabled() and not self.firewall.is_allowed(src_ip):
             print(f"Packet from {src_ip} filtered and dropped by firewall.")
           
           else:

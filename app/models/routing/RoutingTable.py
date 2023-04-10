@@ -20,7 +20,6 @@ class RoutingTable:
     '''
       Loads routing table from a routing_table_dump.
     '''
-    print(f"---> Loading dumps: {routing_table_dump}")
     if not network_interface_prefix in self.routing_table:
       self.routing_table[network_interface_prefix] = []
 
@@ -41,7 +40,6 @@ class RoutingTable:
       for inner_prefix, cost in self.routing_table[prefix]:
         if not inner_prefix in self.routing_table: # Add only if don't have a shorter path
           dump.add(f"{inner_prefix},{int(cost) + 1}")
-    print(f"---> Routing table dumps: {dump}")
     return ":".join(list(dump))
 
   
@@ -53,16 +51,29 @@ class RoutingTable:
         prefix, cost = route
         if prefix == prefix_to_remove:
           self.routing_table[neighbour].remove(route)
-  
-  def remove_from_entry(self, network_interface_prefix: str, prefix_to_remove: str) -> None:
-    for entry in self.routing_table[network_interface_prefix]:
-      prefix, cost = entry
-      if prefix == prefix_to_remove:
-        self.routing_table[network_interface_prefix].remove(entry)
-        break
+          break
 
-  def get_route():
-    pass
+  def get_next_hop_prefix(self, prefix_to_retrieve: str) -> str:
+    '''
+      Get next prefix to hop to based on cost.
+      1. Checks for immediate network interface IPs first (routing_table's keys)
+      2. If not available, check each entry for cheapest and sned to that network interface for next hop.
+    '''
+    if prefix_to_retrieve in self.routing_table:
+      return prefix_to_retrieve
+    
+    next_hop_prefix = None
+    min_cost = float('inf')
+    for neighbour_prefix in self.routing_table.keys():
+      routes = self.routing_table[neighbour_prefix]      
+      for route in routes:
+        prefix, cost = route
+        if prefix == prefix_to_retrieve and int(cost) < min_cost:
+          next_hop_prefix = neighbour_prefix
+          min_cost = int(cost)
+          break
+
+    return next_hop_prefix
 
   def pprint(self) -> None:
     print(json.dumps({route: [f"({prefix}, {cost})" for prefix, cost in self.routing_table[route]] for route in self.routing_table}, indent=2))

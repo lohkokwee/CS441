@@ -33,6 +33,17 @@ class ARPTable:
   def get_corresponding_socket(self, ip_address: str) -> socket.socket:
     arp_record = self.arp_table[ip_address]
     return arp_record["corresponding_socket"]
+
+  def get_corresponding_socket_from_prefix(self, ip_prefix:str) -> socket.socket:
+    target_address = None
+    for ip_address in self.arp_table.keys():
+      if ip_prefix in ip_address:
+        target_address = ip_address
+        break
+    
+    if target_address:
+      return self.arp_table[target_address]["corresponding_socket"]
+    return None
   
   def get_corresponding_mac(self, ip_address: str) -> Union[str, None]:
     arp_record = self.arp_table.get(ip_address, None)
