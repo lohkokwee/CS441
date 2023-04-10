@@ -8,17 +8,20 @@ class Firewall:
   '''
   blacklist: List[str]
   whitelist: List[str]
-  disabled: bool
+  blacklist_disabled: bool
+  whitelist_disabled: bool
 
   def __init__(
     self,
     blacklist: str = [],
     whitelist: str = [],
-    disabled: bool = False,
+    blacklist_disabled: bool = False,
+    whitelist_disabled: bool = True,
   ):
     self.blacklist = blacklist
     self.whitelist = whitelist
-    self.disabled = disabled
+    self.blacklist_disabled = blacklist_disabled
+    self.whitelist_disabled = whitelist_disabled
 
   def __str__(self) -> str:
     return
@@ -56,16 +59,30 @@ class Firewall:
     print_brk()
   
   def is_disabled(self):
-    return self.disabled
+    '''
+      Returns True if both whitelisting and blacklisting disabled.
+      If either enabled, return False.
+    '''
+    return not (self.blacklist_disabled or self.whitelist_disabled)
 
-  def enable_firewall(self):
-    self.disabled = False
-    print("Firewall successfully enabled.")
+  def enable_whitelist(self):
+    self.whitelist_disabled = False
+    print("Whitelisting firewall successfully enabled.")
     print_brk()
 
-  def disable_firewall(self):
-    self.disabled = True
-    print("Firewall successfully disabled.")
+  def disable_whitelist(self):
+    self.whitelist_disabled = True
+    print("Whitelisting firewall successfully disabled.")
+    print_brk()
+
+  def enable_blacklist(self):
+    self.blacklist_disabled = False
+    print("Blacklisting firewall successfully enabled.")
+    print_brk()
+
+  def disable_blacklist(self):
+    self.blacklist_disabled = True
+    print("Blacklisting firewall successfully disabled.")
     print_brk()
 
   def get_blacklist(self) -> List:
@@ -73,25 +90,74 @@ class Firewall:
 
   def get_whitelist(self) -> List:
     return self.whitelist
-  
+
+  def is_allowed(self, ip_address):
+    if not self.blacklist_disabled:
+      return not (ip_address in self.blacklist)
+    elif not self.whitelist_disabled:
+      return not (ip_address in self.whitelist)
+    return True
+    
+  def handle_whitelist_firewall_input(self, device: str, has_top_break: bool = True):
+    if has_top_break:
+      print_brk()
+      
+    print("Commands to configure firewall:")
+    print("- w \t\t View the current whitelist for this node.")
+    print("- w -a \t\t Add a node to the whitelist.")
+    print("- w -r \t\t Remove a node from the whitelist.")
+    print("- w -d \t Disable firewall.")
+    print("- w -e \t Enable firewall.")
+    print_brk()
+
+    user_input = input("> ")
+    if user_input == "w":
+      print(f"Current whitelisted IPs: {self.get_whitelist()}.")
+      print_brk()
+
+    elif user_input == "w -a":
+      ip_to_add = input_ip_sequence("What is the value of the IP you wish to add to whitelist?\n> ")
+      self.add_to_whitelist(ip_to_add)
+
+    elif user_input == "w -r":
+      ip_to_add = input_ip_sequence("What is the value of the IP you wish to remove from whitelist?\n> ")
+      self.remove_from_whitelist(ip_to_add)
+
+    elif user_input == "w -d":
+      self.disable_whitelist()()
+
+    elif user_input == "w -e":
+      self.enable_whitelist()()
+    
+    else:
+      print_command_not_found(device = device)
+
   def handle_firewall_input(self, has_top_break: bool = True):
     if has_top_break:
       print_brk()
 
     print("Commands to configure firewall:")
+    print("s \t\t Display current status of firewall.")
     print("- b \t\t View the current blacklist for this node.")
     print("- b -a \t\t Add a node to the blacklist.")
     print("- b -r \t\t Remove a node from the blacklist.")
+    print("- b -e \t\t Enable blacklist firewall.")
+    print("- b -d \t\t Disable blacklist firewall.")
     print("- w \t\t View the current whitelist for this node.")
     print("- w -a \t\t Add a node to the whitelist.")
     print("- w -r \t\t Remove a node from the whitelist.")
-    print("- (d)isable \t Disable firewall.")
-    print("- (e)nable \t Enable firewall.")
+    print("- w -e \t\t Enable whitelist firewall.")
+    print("- w -d \t\t Disable whitelist firewall.")
     print_brk()
 
     user_input = input("> ")
 
-    if user_input == "b":
+    if user_input == "s":
+      print(f"Blacklisting currently disabled: {self.blacklist_disabled}")
+      print(f"Whitelisting currently disabled: {self.whitelist_disabled}")
+      print_brk()
+
+    elif user_input == "b":
       print(f"Current blacklisted IPs are: {self.get_blacklist()}.")
       print_brk()
 
@@ -102,6 +168,12 @@ class Firewall:
     elif user_input == "b -r":
       ip_to_add = input_ip_sequence("What is the value of the IP you wish to remove from blacklist?\n> ")
       self.remove_from_blacklist(ip_to_add)
+
+    elif user_input == "b -e":
+      self.enable_blacklist()()
+
+    elif user_input == "b -d":
+      self.disable_blacklist()()
     
     elif user_input == "w":
       print(f"Current whitelisted IPs: {self.get_whitelist()}.")
@@ -115,11 +187,11 @@ class Firewall:
       ip_to_add = input_ip_sequence("What is the value of the IP you wish to remove from whitelist?\n> ")
       self.remove_from_whitelist(ip_to_add)
 
-    elif user_input == "disable" or user_input == "d":
-      self.disable_firewall()
+    elif user_input == "w -e":
+      self.enable_whitelist()
 
-    elif user_input == "enable" or user_input == "e":
-      self.enable_firewall()
-    
+    elif user_input == "w -d":
+      self.disable_whitelist()
+ 
     else:
       print_command_not_found(device = "node")

@@ -142,14 +142,15 @@ class NetworkInterface:
 
     else:
       print("Destination not in LAN.")
-      ip_addresses = self.network_int_arp_table.get_used_ip_addresses()
       print("Routing packet to LAN with destination prefix... [2/2]")
-      valid_ips = filter(lambda ip_address: (ip_address[:3] == ip_prefix), ip_addresses)
-      for ip_address in valid_ips:
-        corresponding_socket = self.network_int_arp_table.get_corresponding_socket(ip_address)
+      next_hop_prefix = self.routing_table.get_next_hop_prefix(ip_prefix)
+      if next_hop_prefix:
+        corresponding_socket = self.network_int_arp_table.get_corresponding_socket_from_prefix(next_hop_prefix)
         corresponding_socket.send(bytes(ip_packet.dumps(), "utf-8"))
-    
-    print("IP packet routed. [Completed]")
+        print("IP packet routed. [Completed]")
+      else:
+        print("Failed to locate next hop...")
+        print("Failed to route IP packet. [Fail]")
 
   def handle_ethernet_frame(self, ethernet_frame: EthernetFrame, corresponding_socket: socket.socket) -> None:
     # Checks whether frame is query reply, if yes, update ARP table
@@ -173,6 +174,11 @@ class NetworkInterface:
       self.broadcast_ethernet_frame_data(ethernet_frame)
 
   def handle_ip_packet(self, ip_packet: IPPacket, corresponding_socket: socket.socket) -> None:
+    '''
+      Handles what a network interface does with an IP packet.
+      1. Checks if current network interface is intended recipient (for routing table update)
+      2. If not recipient, route to respective address
+    '''
     payload = ip_packet.dumps()
     print("IP packet received: ", payload)
 

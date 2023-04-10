@@ -71,6 +71,23 @@ def print_dns_help(has_top_break: bool = True):
   print("- whoami \t Bring up current ip and mac address.")
   print_brk()
 
+def print_server_help(has_top_break: bool = True):
+  if has_top_break:
+    print_brk()
+
+  print("Commands:")
+  print("- (q)uit \t Terminate network interface.")
+  print("- (h)elp \t Display command menu.")
+  print("- reconnect \t Attempt to reconnect to failed connections during start up.")
+  print("- ip route \t Display all routing tables.")
+  print("- arp \t\t Display all ARP tables.")
+  print("- arp -n \t Display ARP tables with connected nodes.")
+  print("- arp -r \t Display ARP tables with connected network interfaces.")
+  print("- firewall \t Read or configure firewall options.")
+  print("- whoami \t Bring up current ip and mac address.")
+  print("- broadcast \t Broadcast an ARP query")
+  print_brk()
+
 def print_command_not_found(device: Literal["node", "network_interface"]):
   print_brk()
   print("Unidentified command. Please use a registered command...")
@@ -80,6 +97,8 @@ def print_command_not_found(device: Literal["node", "network_interface"]):
     print_network_int_help(has_top_break = False)
   elif device == "dns":
     print_dns_help(has_top_break = False)
+  elif device == "server":
+    print_server_help(has_top_break = False)
 
 def print_error(has_top_break: bool = True):
   if has_top_break:

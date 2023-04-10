@@ -48,6 +48,9 @@ class IPPacket:
 
   def dest_ip_prefix(self) -> str:
     return self.destination[:3]
+
+  def source_ip_prefix(self) -> str:
+    return self.source[:3]
   
   def is_broadcast_address(self) -> bool:
     '''
@@ -87,6 +90,20 @@ class IPPacket:
       update_prefix = update_prefix[:3]
       exclusion_ips = exclusion_ips.split("/")
     return update_prefix, exclusion_ips
+
+  def vpn_encap_payload(self, new_source: str, new_dest):
+    encap_payload = f"{self.source}:{self.data}"
+    self.data = encap_payload
+    self.source = new_source
+    self.destination = new_dest
+  
+  def vpn_decap_payload(self, new_source: str):
+    decap_payload = self.data.split(":")
+    original_soure, data = decap_payload
+    self.destination = original_soure
+    self.data = data
+    self.source = new_source
+
 
   @staticmethod
   def input_sequence(src_ip: str, dest_ip:str) -> IPPacket:

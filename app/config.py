@@ -107,6 +107,7 @@ VPN_SERVER_CONFIG = {
   "network_int_mac": "V1",
   "network_int_port": VPN_SERVER_PORT,
   "max_connections": 5,
+  "vpn_target_address": "0x7A",
   "network_int_relay_addresses": [(HOST, ROUTER_INT4_PORT)],
 }
 
@@ -126,6 +127,7 @@ PROTECTED_SERVER_CONFIG = {
   "network_int_port": PROTECTED_SERVER_PORT,
   "max_connections": 5,
   "network_int_relay_addresses": [(HOST, VPN_SERVER_PORT), (HOST, ROUTER_INT5_PORT)],
+  "whitelist": ["0x51"]
 }
 
 PROTECTED_NODE_CONFIG = {
