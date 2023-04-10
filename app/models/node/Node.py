@@ -35,6 +35,7 @@ class Node:
   ping_protocol = Ping()
   kill_protocol = Kill()
   sniffer = Sniffer()
+  malicious_dns_table = None # Initialize in the config
 
   def __init__(
     self,
@@ -44,7 +45,8 @@ class Node:
     network_int_port: int,
     network_int_host: str = HOST,
     dns_server_prefix: str = None,
-    dns_records: List = None
+    dns_records: List = None,
+    malicious_dns_records: List = None
   ):
     self.device_name = device_name
     self.node_mac = node_mac
@@ -53,6 +55,7 @@ class Node:
     self.network_int_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     self.dns_table = DNSTable(dns_records)
     self.dns_server_prefix = dns_server_prefix
+    self.malicious_dns_table = DNSTable(malicious_dns_records)
 
   def receive_node_connection_data(self):
     print("Awaiting node connection data... [1/3]")
@@ -121,7 +124,34 @@ class Node:
 
     elif self.sniffer.is_sniffing:
       print("Sniffing enabled...")
-      print(f"Ethernet frame data: {ethernet_frame.data.data}")
+      sniffed_data = ethernet_frame.data.data
+      if self.sniffer.is_dns_spoofing:
+        try:
+          # format: {"domain_name":..., "ip_address":...}
+          # exception thrown here if is not DNS query
+          sniffed_data = json.loads(ethernet_frame.data.data) # type dict
+
+          # Capture and check if it is domain name to attack
+          domain_name = sniffed_data["domain_name"]
+
+          # Resolve ip in malicious table and assign to malicious ip
+          malicious_payload = self.malicious_dns_table.resolve(domain_name)
+          if (
+              malicious_payload is None or 
+              ethernet_frame.data.dest_ip == self.node_ip_address or
+              ethernet_frame.data.src_ip == self.node_ip_address
+            ):
+            pass
+          else:
+            malicious_ip_address = malicious_payload["ip_address"]
+            print(f"DNS response prepared with DNS record of {malicious_payload}.")
+            ip_packet = IPPacket(ethernet_frame.data.dest_ip, malicious_ip_address, PROTOCOL["DNS_QUERY"], json.dumps(malicious_payload))
+            self.send_ip_packet(ip_packet, corresponding_socket, has_bottom_break=False)
+
+        except json.decoder.JSONDecodeError:
+          pass
+
+      print(f"Ethernet frame data: {sniffed_data}")
 
     else:
       print("Unintended recipient.")
