@@ -124,10 +124,10 @@ class Firewall:
       self.remove_from_whitelist(ip_to_add)
 
     elif user_input == "w -d":
-      self.disable_whitelist()()
+      self.disable_whitelist()
 
     elif user_input == "w -e":
-      self.enable_whitelist()()
+      self.enable_whitelist()
     
     else:
       print_command_not_found(device = device)
@@ -170,10 +170,10 @@ class Firewall:
       self.remove_from_blacklist(ip_to_add)
 
     elif user_input == "b -e":
-      self.enable_blacklist()()
+      self.enable_blacklist()
 
     elif user_input == "b -d":
-      self.disable_blacklist()()
+      self.disable_blacklist()
     
     elif user_input == "w":
       print(f"Current whitelisted IPs: {self.get_whitelist()}.")

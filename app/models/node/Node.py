@@ -299,8 +299,11 @@ class Node:
       elif node_input == "dns":
         print("Displaying all local DNS records...")
         self.dns_table.pprint()
+        if bool(self.malicious_dns_table.resolution_table):
+          print("Displaying malicious DNS records...")
+          self.malicious_dns_table.pprint()
         print_brk()
-      
+
       elif node_input == "reply":
         print_brk()
         arp_response_payload = EthernetFrame.arp_reply_sequence(self.network_int_mac, self.node_mac).dumps()

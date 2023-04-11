@@ -47,8 +47,8 @@ class Sniffer:
     print("- (s)tatus \t\t Shows if sniffing has been activated.")
     print("- (d)isable \t\t Disable sniffing.")
     print("- (e)nable \t\t Enable sniffing.")
-    print("- (es)enable spoofing \t Enable DNS spoofing.")
-    print("- (ds)disable spoofing \t Disable DNS spoofing.")
+    print("- (e)enable (s)poofing \t Enable DNS spoofing.")
+    print("- (d)disable (s)poofing \t Disable DNS spoofing.")
     print_brk()
 
     user_input = input("> ")
