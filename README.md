@@ -8,7 +8,7 @@ CS441 Network Security Project - Python Network Emulator
 ```
     pip install requirements.txt
 ``` -->
-> Note: while connecting the nodes/routers interfaces, please wait for a few seconds until you see the horizontal bar and get an indication of completion before you proceed to connect another node - this is to ensure that the ARP routing tables are assigned correctly
+> While connecting the nodes/routers interfaces, please wait for a few seconds until you see the horizontal bar and get an indication of completion before you proceed to connect another node - this is to ensure that the ARP routing tables are assigned correctly
 
 1. Open five different terminals and run the commands below in their respective orders for each node. 
 ```
@@ -51,35 +51,42 @@ CS441 Network Security Project - Python Network Emulator
 2. You will notice an ARP routing table being built for the router interfaces in the respective terminals where the node is connecting to.
 
 3. Upon a successful connection, a table of commands will be displayed.
-* Command table for nodes:
- ```   
- Commands:
-- (q)uit 	 Terminate node.
-- (h)elp 	 Display command menu.
-- eth 		 Create an ethernet packet.
-- ip 		 Create an IP packet.
-- dns 		 Display all DNS records.
-- arp 		 Display all ARP tables.
-- reply 	 Reply ARP broadcast query.
-- firewall 	 Read or configure firewall options.
-- kill 		 Configure kill protocol options.
-- sniff 	 Configure sniffing functionality.
-- spoof 	 Spoof your IP address.
-- whoami 	 Bring up current ip and mac address.
-```
-* Command table for router's network interfaces:
-```
-Commands:
-- (q)uit 	 Terminate network interface.
-- (h)elp 	 Display command menu.
-- reconnect  Attempt to reconnect to failed connections during start up.
-- ip route 	 Display all routing tables.
-- arp 		 Display all ARP tables.
-- arp -n 	 Display ARP tables with connected nodes.
-- arp -r 	 Display ARP tables with connected network interfaces.
-- whoami 	 Bring up current ip and mac address.
-- broadcast  Broadcast an ARP query
-```
+    <details>
+    <summary>Command table for nodes</summary>
+
+    ```   
+    Commands:
+    - (q)uit 	 Terminate node.
+    - (h)elp 	 Display command menu.
+    - eth 		 Create an ethernet packet.
+    - ip 		 Create an IP packet.
+    - dns 		 Display all DNS records.
+    - arp 		 Display all ARP tables.
+    - reply 	 Reply ARP broadcast query.
+    - firewall 	 Read or configure firewall options.
+    - kill 		 Configure kill protocol options.
+    - sniff 	 Configure sniffing functionality.
+    - spoof 	 Spoof your IP address.
+    - whoami 	 Bring up current ip and mac address.
+    ```
+    </details>
+
+    <details>
+    <summary>Command table for router's network interfaces</summary>
+    
+    ```
+    Commands:
+    - (q)uit 	 Terminate network interface.
+    - (h)elp 	 Display command menu.
+    - reconnect  Attempt to reconnect to failed connections during start up.
+    - ip route 	 Display all routing tables.
+    - arp 		 Display all ARP tables.
+    - arp -n 	 Display ARP tables with connected nodes.
+    - arp -r 	 Display ARP tables with connected network interfaces.
+    - whoami 	 Bring up current ip and mac address.
+    - broadcast  Broadcast an ARP query
+    ```
+    </details>
 
 These commands provide you the entry point to test our various implementations of the networking protocols.
 
@@ -109,30 +116,40 @@ These commands provide you the entry point to test our various implementations o
 
 
 # Baseline Features
-> Note: the baseline features can be tested via the terminals set up in the getting started section.
+> The baseline features can be tested via the terminals set up in the getting started section.
 
 ## 1. Ethernet Broadcast
 Ethernet frames are used as the main mode of communication within a LAN. An ethernet frame can be sent within the LAN through the `eth` command in the `node_<num>.py` terminal. 
 
 The process below demonstrates the example for when `node 2` wishes to send an ethernet frame to `node 3`.
-
 1. Enter `$ eth` into `node 2`'s terminal and fill up the required data from the sequence.
-```
-Create an ethernet frame by entering the following infomration into the console.
-Enter destination MAC address... [1/2]
-> N3
-Enter payload... [2/2]
-> Sending eth frame to N3
-Ethernet frame sent. [Completed]
-```
+    <details>
+        
+    <summary>...</summary>
 
+    ```
+    Create an ethernet frame by entering the following infomration into the console.
+    Enter destination MAC address... [1/2]
+    > N3
+    Enter payload... [2/2]
+    > Sending eth frame to N3
+    Ethernet frame sent. [Completed]
+    ```
+</details>
+    
 2. There will be an indication of a successful frame being sent.
+
 3. `node 3` receives the frame.
-```
-Ethernet frame received: N3|N2|35|4e:6f:6e:65:2d:4e:6f:6e:65:2d:34:2d:53:65:6e:64:69:6e:67:20:65:74:68:20:66:72:61:6d:65:20:74:6f:20:4e:33
-Intended recipient, retrieving data...
-Ethernet frame data: Sending eth frame to N3
-```
+    <details>
+        
+    <summary>...</summary>
+
+    ```
+    Ethernet frame received: N3|N2|35|4e:6f:6e:65:2d:4e:6f:6e:65:2d:34:2d:53:65:6e:64:69:6e:67:20:65:74:68:20:66:72:61:6d:65:20:74:6f:20:4e:33
+    Intended recipient, retrieving data...
+    Ethernet frame data: Sending eth frame to N3
+    ```
+</details>
 
 ## 2. IP Packet Forwarding
 IP packet forwarding enables inter LAN communications. A IP packet can be generated and sent via the `$ ip` command in any `node_<num>.py` terminal.
@@ -269,6 +286,50 @@ Connections terminated, node killed.
 3. `node 3` terminates and all respective connections are killed.
 
 ## 4. IP Spoofing
+IP spoofing involves altering the source address while sending an IP packet.
+
+The process below demonstrates the example for when `node 1` spoofs `node 2` and sends a ping to `node 3`.
+
+1. Enter `$ spoof` into `node 1`'s terminal and fill up the required data from the sequence.
+```
+# Node 1
+
+spoof
+Enter the IP address you want to spoof.
+> 0x2A
+--------------------------------------------------------------------------------
+Enter destination address...
+> 0x2B
+--------------------------------------------------------------------------------
+Enter protocol...
+- 0 	 Ping protocol
+- 1 	 Log protocol
+- 2 	 Kill protocol
+> 0
+--------------------------------------------------------------------------------
+Enter payload...
+> Ping 0x2B as 0x2A
+```
+
+2. IP packet is routed accordingly thorugh `R1` and `R2`, and `node 3` recieves the encapsulated packet as an ethernet frame and proceeds with a ping response.
+```
+# Node 3
+
+Ethernet frame received: N3|R2|29|30:78:32:42:2d:30:78:32:41:2d:30:2d:50:69:6e:67:20:30:78:32:42:20:61:73:20:30:78:32:41
+Intended recipient, retrieving data...
+Ping request received, echoing data...
+Data (Ping 0x2B as 0x2A) echoed.
+```
+
+3. Since the address is spoofed, `node 3` will be under the impression that `node 2` sent the ping request and responds to `node 2` instead of `node 1` (the spoofer). `node 2` receives a ping response to an unintiated ping request, as seen below.
+```
+# Node 2
+
+Ethernet frame received: N2|R2|30|30:78:32:41:2d:30:78:32:42:2d:30:72:2d:50:69:6e:67:20:30:78:32:42:20:61:73:20:30:78:32:41
+Intended recipient, retrieving data...
+Invalid ping response received (Ping 0x2B as 0x2A) to uninitiated ping protocol.
+```
+
 
 ## 5. Sniffing Attack
 
