@@ -674,7 +674,7 @@ BGP announcements are generated as a new router interface connects to existing r
 > Note that withdrawals follow a similar process, except we remove the need to calculate the cost.
 
 
-### 3.1 Observing BGP Announcements
+### 3.1 BGP Announcements
 To observe BGP announcements, we can follow the process below:
 
 1. Run the following code on two different terminals.
