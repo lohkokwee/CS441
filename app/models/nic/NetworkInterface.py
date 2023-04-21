@@ -132,7 +132,7 @@ class NetworkInterface:
     ip_prefix = ip_packet.dest_ip_prefix()
     
     if ip_prefix == self.network_int_ip_prefix:
-      print("Broadcasting de-capsulated IP packets to connected nodes... [2/2]")
+      print("Broadcasting encapsulated IP packets to connected nodes... [2/2]")
       dest_mac = None
       is_broadcast_channel = ip_packet.is_broadcast_address()
       if not is_broadcast_channel:

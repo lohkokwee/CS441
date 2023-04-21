@@ -52,7 +52,7 @@ class Server(NetworkInterface):
       ) or (
         self.firewall.is_disabled()
       ):
-        print("Broadcasting de-capsulated IP packets to connected nodes... [2/2]")
+        print("Broadcasting encapsulated IP packets to connected nodes... [2/2]")
         dest_mac = None
         is_broadcast_channel = ip_packet.is_broadcast_address()
         if not is_broadcast_channel:
