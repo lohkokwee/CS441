@@ -196,7 +196,7 @@ class Node:
 
       except: # Remove this exception to see potential crashes here
         traceback.print_exc()
-        print("{self.device_name} terminated.")
+        print(f"{self.device_name} terminated.")
         return # Should only occur when handle_input receives "quit"
 
   def send_dns_query(self, address: str) -> str:
