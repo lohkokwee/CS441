@@ -786,6 +786,8 @@ To observe BGP announcements, we can follow the process below:
     ```
 
     ```
+        # Router Interface 2
+
         ip route
         Displaying IP routing tables with connected network interfaces (IP Prefix:Connected Prefixes)...
         {
@@ -801,6 +803,8 @@ To observe BGP announcements, we can follow the process below:
     Notice how both Router Interfaces 1 and 2 shows how we can only reach the VPN server's prefix through the prefix of Router Interface 4. Also notice, that this involves a cost of 1 "hop".
 
     ```
+        # Router Interface 4
+
         ip route
         Displaying IP routing tables with connected network interfaces (IP Prefix:Connected Prefixes)...
         {
@@ -834,3 +838,62 @@ To observe BGP announcements, we can follow the process below:
 This example aims to emulate BGP announcements by showing how through announcing new connections, we are able to expand the network to reach otherwise unreachable IP addresses.
 
 ### 3.2 BGP Withdrawals
+To observe BGP withdrawal announcements, we begin from the setup above (in 3.1 BGP Announcements).
+
+1. Kill Router Interface 1's terminal by entering the command `$ q`. You should observe an announcement being propagated throughout the terminals. Inspecting the different terminals with `$ ip route` allows us to observe that the routes to Router Interface 1 with perfix `0x1` have been removed.
+    
+    ```
+        # Router Interface 2
+
+        ip route
+        Displaying IP routing tables with connected network interfaces (IP Prefix:Connected Prefixes)...
+        {
+        "0x4": [
+            "(0x5, 1)"
+        ]
+        }
+    ```
+
+    ```
+        # Router Interface 4
+
+        ip route
+        Displaying IP routing tables with connected network interfaces (IP Prefix:Connected Prefixes)...
+        {
+        "0x2": [],
+        "0x5": []
+        }
+    ```
+
+    ```
+        #  VPN Server
+
+        ip route
+        Displaying IP routing tables with connected network interfaces (IP Prefix:Connected Prefixes)...
+        {
+        "0x4": [
+            "(0x2, 1)",
+        ]
+        }
+    ```
+
+2. To further illustrate the BGP withdrawal announcement, we can kill Router Interface 4's terminal with command `$ q`, the interface connecting Router Interface 2 with prefix `0x2` to VPN Server with prefix `0x5`.
+
+    
+    ```
+        # Router Interface 2 (0x2)
+
+        ip route
+        Displaying IP routing tables with connected network interfaces (IP Prefix:Connected Prefixes)...
+        {}
+    ```
+    ```
+        #  VPN Server (0x5)
+
+        ip route
+        Displaying IP routing tables with connected network interfaces (IP Prefix:Connected Prefixes)...
+        {}
+    ```
+    As the intermediary "hop" between the Router Interface 2 and VPN Server has been terminated, we will no longer be able to router IP packets to either servers through each other.
+
+This example demonstrates how routes can be removed through BGP withdrawal announcements to prevent IP packets from going down paths with interfaces that no longer exist. 
