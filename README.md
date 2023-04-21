@@ -660,3 +660,177 @@ The process below demonstrates the example for when `node 2` configures a firewa
 
 6. Subsequent IP packets sent out by `node 2` to "N1.com" will be routed to IP address "0x2B", which is `node 3`, instead of the correct IP of "0x1A", which is `node 1`.
 
+## 3. BGP Announcement/Withdrawals
+BGP announcements and withdrawals are critical for us to extend the network to allow our routers to relay information to IP prefixes that are not direct neighbours.
+
+BGP announcements are generated as a new router interface connects to existing router interfaces. The process is as such:
+
+1. When a new router is attached to existing routers, an announcement is sent out to announce the new router’s prefix.
+
+2. When this announcement is received by neighbouring routers, these routers add this new route to their routing tables and announce the new route to their neighbouring routers until the network has this knowledge.
+
+3. The "cost" to transmit through this "hop" is also calculated while the announcements are handled. This allows us to determine a policy for an “optimal route” during IP packet routing.
+
+> Note that withdrawals follow a similar process, except we remove the need to calculate the cost.
+
+
+### 3.1 Observing BGP Announcements
+To observe BGP announcements, we can follow the process below:
+
+1. Run the following code on two different terminals.
+    ```
+        python router_interface1.py
+    ```
+
+    ```
+        python router_interface2.py
+    ```
+
+2. Observe the initial routing tables with the command `$ ip route`.
+    ```
+        #  Router Interface 1
+
+        ip route
+        Displaying IP routing tables with connected network interfaces (IP Prefix:Connected Prefixes)...
+        {
+            "0x2": []
+        }
+    ```
+
+    ```
+        #  Router Interface 2
+
+        ip route
+        Displaying IP routing tables with connected network interfaces (IP Prefix:Connected Prefixes)...
+        {
+            "0x1": []
+        }
+    ```
+    This signifies that these two router interfaces with prefixes `0x2` and `0x1` are directly connected to each other and have a "cost" of 0 (in our implementation).
+
+    > If you are confused about which terminal holds what identity at any point, enter the command `$ whoami`.
+
+3. Attached Router Interface 4 by running the following code in a new terminal.
+    ```
+        python router_interface4.py
+    ```
+
+4. Observe the new routing tables with the command `$ ip route`.
+    ```
+        #  Router Interface 1
+
+        ip route
+        Displaying IP routing tables with connected network interfaces (IP Prefix:Connected Prefixes)...
+        {
+        "0x2": [
+            "(0x4, 1)"
+        ],
+        "0x4": []
+        }
+    ```
+
+    ```
+        #  Router Interface 2
+
+        ip route
+        Displaying IP routing tables with connected network interfaces (IP Prefix:Connected Prefixes)...
+        {
+        "0x1": [
+            "(0x4, 1)"
+        ],
+        "0x4": []
+        }
+    ```
+
+    This informs us that both Router Interface 1 and 2 are connected directly to Router Interface 4 and we also observe that Router Interface 4 can be reached by hopping through either of them with a cost of 1.
+
+    ```
+        #  Router Interface 4
+
+        ip route
+        Displaying IP routing tables with connected network interfaces (IP Prefix:Connected Prefixes)...
+        {
+        "0x1": [
+            "(0x2, 1)"
+        ],
+        "0x2": [
+            "(0x1, 1)"
+        ]
+        }
+    ```
+    
+    Observing Router Interface 4's routes, we also notice that it can access router interfaces 1 and 2 directly or by hopping through either of them.
+
+5. Finally, attach VPN Server by running the following code in a new terminal.
+    ```
+        python vpn_server.py
+    ```
+
+6. With four different router interfaces in place, observe the routing tables of each router interface.
+
+    As the VPN Server is connected to Router Interface 4, we would only able to reach it by routing traffic through Router Interface 4.
+
+    ```
+        #  Router Interface 1
+
+        ip route
+        Displaying IP routing tables with connected network interfaces (IP Prefix:Connected Prefixes)...
+        {
+        "0x2": [
+            "(0x4, 1)"
+        ],
+        "0x4": [
+            "(0x5, 1)"
+        ]
+        }
+    ```
+
+    ```
+        ip route
+        Displaying IP routing tables with connected network interfaces (IP Prefix:Connected Prefixes)...
+        {
+        "0x1": [
+            "(0x4, 1)"
+        ],
+        "0x4": [
+            "(0x5, 1)"
+        ]
+        }
+    ```
+
+    Notice how both Router Interfaces 1 and 2 shows how we can only reach the VPN server's prefix through the prefix of Router Interface 4. Also notice, that this involves a cost of 1 "hop".
+
+    ```
+        ip route
+        Displaying IP routing tables with connected network interfaces (IP Prefix:Connected Prefixes)...
+        {
+        "0x1": [
+            "(0x2, 1)"
+        ],
+        "0x2": [
+            "(0x1, 1)"
+        ],
+        "0x5": []
+        }
+    ```
+    
+    Observing Router Interface 4's routes, we also notice that it is the direct neighbour to `0x5` which is the VPN Server's prefix in our case. 
+    
+    ```
+        #  VPN Server
+
+        ip route
+        Displaying IP routing tables with connected network interfaces (IP Prefix:Connected Prefixes)...
+        {
+        "0x4": [
+            "(0x2, 1)",
+            "(0x1, 1)"
+        ]
+        }
+    ```
+
+    Viewing the VPN Server's routing table, we can observe that it can reach prefix `0x2` and prefix `0x1` through its neighbour, prefix `0x4` - Router Interface 4, with a cost of 1 hop.
+
+This example aims to emulate BGP announcements by showing how through announcing new connections, we are able to expand the network to reach otherwise unreachable IP addresses.
+
+### 3.2 BGP Withdrawals
