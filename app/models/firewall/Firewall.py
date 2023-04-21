@@ -137,7 +137,7 @@ class Firewall:
       print_brk()
 
     print("Commands to configure firewall:")
-    print("s \t\t Display current status of firewall.")
+    print("- s \t\t Display current status of firewall.")
     print("- b \t\t View the current blacklist for this node.")
     print("- b -a \t\t Add a node to the blacklist.")
     print("- b -r \t\t Remove a node from the blacklist.")
@@ -153,8 +153,8 @@ class Firewall:
     user_input = input("> ")
 
     if user_input == "s":
-      print(f"Blacklisting currently disabled: {self.blacklist_disabled}")
-      print(f"Whitelisting currently disabled: {self.whitelist_disabled}")
+      print(f"Blacklisting currently enabled: {not self.blacklist_disabled}")
+      print(f"Whitelisting currently enabled: {not self.whitelist_disabled}")
       print_brk()
 
     elif user_input == "b":
